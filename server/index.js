@@ -101,16 +101,24 @@ STEP 8: TONE
 - Clear, Direct, Professional, No fluff`
 
 app.post('/ask', async (req, res) => {
-  const { question, context, projectName, history } = req.body
+  const { question, context, projectName, history, image } = req.body
   try {
     const historyMessages = (history || []).map(m => ({ role: m.role, content: m.content }))
+    
+    const userContent = image
+      ? [
+          { type: 'image', source: { type: 'base64', media_type: image.type, data: image.base64 } },
+          { type: 'text', text: question }
+        ]
+      : question
+
     const message = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
       system: `${SYSTEM_PROMPT}\n\nPROJECT: ${projectName}\n\nDOCUMENTS:\n${context}`,
       messages: [
         ...historyMessages,
-        { role: 'user', content: question }
+        { role: 'user', content: userContent }
       ]
     })
     res.json({ answer: message.content[0].text })
@@ -161,3 +169,29 @@ app.post('/extract-image', upload.single('file'), async (req, res) => {
 
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads')
 app.listen(3001, () => console.log('Server running on port 3001'))
+
+app.post('/extract-figma', async (req, res) => {
+  const { url } = req.body
+  try {
+    const match = url.match(/figma\.com\/(?:file|design)\/([a-zA-Z0-9]+)/)
+    if (!match) return res.status(400).json({ error: 'Invalid Figma URL' })
+    const fileKey = match[1]
+    const figmaRes = await fetch(`https://api.figma.com/v1/files/${fileKey}`, {
+      headers: { 'X-Figma-Token': process.env.FIGMA_TOKEN }
+    })
+    const figmaData = await figmaRes.json()
+    if (figmaData.error) return res.status(400).json({ error: 'Could not access Figma file. Make sure it is public or token has access.' })
+    function extractText(node, depth = 0) {
+      let text = ''
+      if (node.name) text += `${'  '.repeat(depth)}Screen/Layer: ${node.name}\n`
+      if (node.type === 'TEXT' && node.characters) text += `${'  '.repeat(depth)}Text: ${node.characters}\n`
+      if (node.children) node.children.forEach(child => { text += extractText(child, depth + 1) })
+      return text
+    }
+    const extracted = extractText(figmaData.document)
+    res.json({ text: `Figma File: ${figmaData.name}\n\n${extracted}` })
+  } catch (error) {
+    console.error('Figma error:', error.message)
+    res.status(500).json({ error: error.message })
+  }
+})

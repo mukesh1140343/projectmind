@@ -4,10 +4,12 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { supabase } from './supabase'
 
+const ACCESS_PIN = process.env.REACT_APP_ACCESS_PIN || 'MIND01'
+
 const SERVER = process.env.REACT_APP_SERVER_URL || 'http://localhost:3001'
 
 function useTheme() {
-  const [dark, setDark] = useState(() => localStorage.getItem('mind-theme') !== 'light')
+  const [dark, setDark] = useState(() => localStorage.getItem('mind-theme') !== 'dark')
   function toggle() {
     setDark(d => {
       localStorage.setItem('mind-theme', d ? 'light' : 'dark')
@@ -160,7 +162,57 @@ function HistoryItem({ item, s }) {
   )
 }
 
+function LoginPage({ s, onSuccess }) {
+  const [pin, setPin] = useState('')
+  const [error, setError] = useState('')
+  const [shaking, setShaking] = useState(false)
+
+  function handleSubmit() {
+    if (pin.toUpperCase() === ACCESS_PIN.toUpperCase()) {
+      sessionStorage.setItem('mind-auth', 'true')
+      onSuccess()
+    } else {
+      setError('Incorrect PIN. Please try again.')
+      setShaking(true)
+      setPin('')
+      setTimeout(() => setShaking(false), 500)
+    }
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', background: s.page.background, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: s.page.fontFamily }}>
+      <div style={{ width: '100%', maxWidth: '400px', padding: '40px 24px', textAlign: 'center' }}>
+        <div style={{ width: '56px', height: '56px', background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', margin: '0 auto 24px' }}>🧠</div>
+        <div style={{ fontSize: '32px', fontWeight: '700', color: s.pageTitle.color, marginBottom: '8px', letterSpacing: '-0.5px' }}>Mind</div>
+        <div style={{ fontSize: '15px', color: s.pageSub.color, marginBottom: '40px', lineHeight: '1.6' }}>Your AI product assistant.<br />Ask anything about your projects.</div>
+        <div style={{ background: s.card.background, border: `1px solid ${s.card.border}`, borderRadius: '16px', padding: '28px' }}>
+          <div style={{ fontSize: '13px', fontWeight: '600', color: s.pageSub.color, marginBottom: '12px', textAlign: 'left' }}>Enter access PIN</div>
+          <input
+            style={{ ...s.input, textAlign: 'center', fontSize: '20px', letterSpacing: '6px', fontWeight: '600', marginBottom: '12px', animation: shaking ? 'shake 0.5s' : 'none' }}
+            placeholder="••••••"
+            value={pin}
+            maxLength={6}
+            onChange={e => { setPin(e.target.value.toUpperCase()); setError('') }}
+            onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+            autoFocus
+          />
+          {error && <div style={{ color: '#F87171', fontSize: '13px', marginBottom: '12px' }}>{error}</div>}
+          <button style={{ ...s.btn, width: '100%' }} onClick={handleSubmit}>Enter →</button>
+        </div>
+        <div style={{ fontSize: '12px', color: s.poweredBy.color, marginTop: '24px' }}>Powered by Way.com · Built with Claude AI</div>
+      </div>
+      <style>{`@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-8px)} 80%{transform:translateX(8px)} }`}</style>
+    </div>
+  )
+}
+
+
+
+
+
+
 function PMApp() {
+  const [figmaUrl, setFigmaUrl] = useState('')
   const { dark, toggle } = useTheme()
   const s = makeStyles(dark)
   const [projects, setProjects] = useState([])
@@ -177,8 +229,11 @@ function PMApp() {
   const [processing, setProcessing] = useState('')
   const [creating, setCreating] = useState(false)
   const fileInputRef = useRef(null)
+  const [authed, setAuthed] = useState(() => sessionStorage.getItem('mind-auth') === 'true')
 
   useEffect(() => { fetchProjects() }, [])
+
+  if (!authed) return <LoginPage s={s} onSuccess={() => setAuthed(true)} />
 
   function showToast(msg) {
     setToast(msg)
@@ -199,6 +254,40 @@ function PMApp() {
     const { data } = await supabase.from('messages').select('*').eq('project_id', projectId).order('created_at', { ascending: false }).limit(50)
     if (data) setChatHistory(data)
   }
+
+  async function extractFigma() {
+    if (!figmaUrl.trim()) return
+    setProcessing('Reading Figma file...')
+    try {
+      const res = await fetch(`${SERVER}/extract-figma`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: figmaUrl })
+      })
+      const data = await res.json()
+      if (data.error) { showToast(`Figma error: ${data.error}`); return }
+      const { error } = await supabase.from('documents').insert([{
+        project_id: selectedProject.id,
+        title: `Figma: ${figmaUrl.split('/').pop()}`,
+        content: data.text.substring(0, 100000)
+      }])
+      if (error) showToast('Failed to save Figma content')
+      else {
+        showToast('Figma screens extracted!')
+        setFigmaUrl('')
+        fetchDocuments(selectedProject.id)
+      }
+    } catch (err) {
+      showToast(`Error: ${err.message}`)
+    }
+    setProcessing('')
+  }
+
+
+
+
+
+
 
   async function createProject() {
     if (!newName.trim()) return
@@ -406,7 +495,28 @@ function PMApp() {
               <input ref={fileInputRef} type="file" accept="*/*" multiple style={{ display: 'none' }} onChange={handleFileUpload} />
             </div>
             {processing && <div style={s.processing}>{processing}</div>}
-            <div style={s.divider}>— or paste content manually —</div>
+            <div style={s.divider}>—  
+              
+              
+
+
+              <div style={{ marginBottom: '16px' }}>
+  <div style={{ fontSize: '13px', fontWeight: '600', color: text2, marginBottom: '8px' }}>Or add Figma link</div>
+  <div style={{ display: 'flex', gap: '8px' }}>
+    <input
+      style={{ ...s.input, marginBottom: 0, flex: 1 }}
+      placeholder="https://www.figma.com/file/..."
+      value={figmaUrl}
+      onChange={e => setFigmaUrl(e.target.value)}
+    />
+    <button style={s.btnSm} onClick={extractFigma} disabled={!figmaUrl.trim()}>
+      Extract
+    </button>
+  </div>
+</div>
+
+              
+               or paste content manually —</div>
             <input style={s.input} placeholder="Document title (e.g. PRD v2, Walkthrough notes)" value={docTitle} onChange={e => setDocTitle(e.target.value)} />
             <textarea style={s.textarea} placeholder="Paste your document content here..." value={docContent} onChange={e => setDocContent(e.target.value)} />
             <button style={s.btn} onClick={uploadPasted}>Upload document</button>
@@ -449,6 +559,14 @@ function PMApp() {
 }
 
 function ChatApp() {
+  
+  const [chatImage, setChatImage] = useState(null)
+const [chatImagePreview, setChatImagePreview] = useState(null)
+const imageInputRef = useRef(null)
+  
+setChatImage(null)
+setChatImagePreview(null)
+
   const { projectId } = useParams()
   const { dark, toggle } = useTheme()
   const s = makeStyles(dark)
@@ -465,6 +583,21 @@ function ChatApp() {
       if (data) setProject(data)
       else setNotFound(true)
     }
+
+    function handleChatImage(e) {
+      const file = e.target.files[0]
+      if (!file) return
+      const reader = new FileReader()
+      reader.onload = () => {
+        setChatImage({ base64: reader.result.split(',')[1], type: file.type })
+        setChatImagePreview(reader.result)
+      }
+      reader.readAsDataURL(file)
+    }
+
+
+
+
     async function loadHistory() {
       const { data } = await supabase
         .from('messages')
@@ -512,7 +645,7 @@ function ChatApp() {
       const res = await fetch(`${SERVER}/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: userQuestion, context, projectName: project.name, history })
+        body: JSON.stringify({ question: userQuestion, context, projectName: project.name, history, image: chatImage  })
       })
       const data = await res.json()
       const answer = data.answer
@@ -577,18 +710,34 @@ function ChatApp() {
           )}
           <div ref={chatEndRef} />
         </div>
-        <div style={s.inputWrap}>
-          <input
-            style={s.chatInput}
-            placeholder="Ask anything about this project..."
-            value={question}
-            onChange={e => setQuestion(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && askQuestion()}
-          />
-          <button style={s.sendBtn} onClick={askQuestion} disabled={loading}>
-            {loading ? '...' : 'Ask →'}
-          </button>
-        </div>
+
+        <div>
+  {chatImagePreview && (
+    <div style={{ marginBottom: '8px', position: 'relative', display: 'inline-block' }}>
+      <img src={chatImagePreview} alt="attached" style={{ maxHeight: '120px', borderRadius: '8px', border: `1px solid ${s.aiBubble.border}` }} />
+      <button onClick={() => { setChatImage(null); setChatImagePreview(null) }} style={{ position: 'absolute', top: '4px', right: '4px', background: '#111', color: '#fff', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', fontSize: '11px' }}>×</button>
+    </div>
+  )}
+  <div style={s.inputWrap}>
+    <input
+      style={s.chatInput}
+      placeholder="Ask anything about this project..."
+      value={question}
+      onChange={e => setQuestion(e.target.value)}
+      onKeyDown={e => e.key === 'Enter' && askQuestion()}
+    />
+    <button onClick={() => imageInputRef.current.click()} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', padding: '4px 8px' }} title="Attach screenshot">📎</button>
+    <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleChatImage} />
+    <button style={s.sendBtn} onClick={askQuestion} disabled={loading}>
+      {loading ? '...' : 'Ask →'}
+    </button>
+  </div>
+</div>
+
+
+
+
+        
         <div style={s.poweredBy}>Mind by Way.com</div>
       </div>
     </div>
