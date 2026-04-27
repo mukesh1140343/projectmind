@@ -123,7 +123,7 @@ app.post('/ask', async (req, res) => {
 app.post('/extract-pdf', upload.single('file'), async (req, res) => {
   try {
     const dataBuffer = fs.readFileSync(req.file.path)
-    const pdfParse = require('pdf-parse/lib/pdf-parse')
+    const pdfParse = require('pdf-parse')
     const data = await pdfParse(dataBuffer)
     fs.unlinkSync(req.file.path)
     res.json({ text: data.text })
