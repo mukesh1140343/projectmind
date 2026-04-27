@@ -7,7 +7,9 @@ require('dotenv').config({ path: '../.env' })
 
 const app = express()
 const upload = multer({ dest: 'uploads/' })
-app.use(cors())
+app.use(cors({
+  origin: ['http://localhost:3000', /\.vercel\.app$/]
+}))
 app.use(express.json({ limit: '50mb' }))
 
 const anthropic = new Anthropic({ apiKey: process.env.REACT_APP_CLAUDE_KEY })
