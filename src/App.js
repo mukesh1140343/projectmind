@@ -4,12 +4,11 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { supabase } from './supabase'
 
+const SERVER = process.env.REACT_APP_SERVER_URL || 'http://localhost:3001'
 const ACCESS_PIN = process.env.REACT_APP_ACCESS_PIN || 'MIND01'
 
-const SERVER = process.env.REACT_APP_SERVER_URL || 'http://localhost:3001'
-
 function useTheme() {
-  const [dark, setDark] = useState(() => localStorage.getItem('mind-theme') !== 'dark')
+  const [dark, setDark] = useState(() => localStorage.getItem('mind-theme') === 'dark')
   function toggle() {
     setDark(d => {
       localStorage.setItem('mind-theme', d ? 'light' : 'dark')
@@ -31,7 +30,6 @@ function makeStyles(dark) {
   const inputBg = dark ? '#1A1A1A' : '#FFFFFF'
   const tabBg = dark ? '#161616' : '#EBEBED'
   const tabActive = dark ? '#252525' : '#FFFFFF'
-
   return {
     page: { minHeight: '100vh', background: bg, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' },
     header: { background: bg2, borderBottom: `1px solid ${border}`, padding: '14px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10 },
@@ -76,13 +74,14 @@ function makeStyles(dark) {
     historyQBadge: { fontSize: '10px', fontWeight: '700', background: '#6366F1', color: '#fff', padding: '2px 6px', borderRadius: '4px', marginTop: '2px', flexShrink: 0 },
     historyA: { fontSize: '13px', color: text2, lineHeight: '1.6' },
     historyMeta: { fontSize: '11px', color: text3, marginTop: '10px' },
+    expandBtn: { background: 'none', border: 'none', color: '#6366F1', fontSize: '12px', cursor: 'pointer', padding: '4px 0', marginTop: '4px' },
     chatPage: { minHeight: '100vh', background: bg, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', display: 'flex', flexDirection: 'column' },
     chatHeader: { background: bg2, borderBottom: `1px solid ${border}`, padding: '16px 28px', display: 'flex', alignItems: 'center', gap: '14px' },
     chatHeaderInfo: { flex: 1 },
     chatProjectName: { fontSize: '17px', fontWeight: '700', color: text1 },
     chatProjectSub: { fontSize: '12px', color: text3, marginTop: '2px' },
     chatBody: { flex: 1, maxWidth: '800px', width: '100%', margin: '0 auto', padding: '28px 24px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' },
-    chatBox: { flex: 1, padding: '8px 0', minHeight: '400px', maxHeight: '560px', overflowY: 'auto', marginBottom: '16px' },
+    chatBox: { flex: 1, padding: '8px 0', minHeight: '400px', maxHeight: '520px', overflowY: 'auto', marginBottom: '16px' },
     emptyChat: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '360px', gap: '12px' },
     emptyChatIcon: { width: '56px', height: '56px', background: bg2, borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', border: `1px solid ${border}` },
     emptyChatTitle: { fontSize: '17px', fontWeight: '600', color: text1 },
@@ -95,6 +94,7 @@ function makeStyles(dark) {
     inputWrap: { background: bg2, borderRadius: '16px', border: `1px solid ${border2}`, padding: '8px 8px 8px 18px', display: 'flex', alignItems: 'center', gap: '8px' },
     chatInput: { flex: 1, border: 'none', fontSize: '14px', outline: 'none', fontFamily: 'inherit', background: 'transparent', color: text1 },
     sendBtn: { background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', fontWeight: '600', whiteSpace: 'nowrap' },
+    attachBtn: { background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', padding: '4px 8px', color: text2 },
     backBtn: { background: bg3, border: `1px solid ${border}`, color: text2, fontSize: '13px', cursor: 'pointer', padding: '6px 12px', borderRadius: '8px' },
     sectionLabel: { fontSize: '11px', fontWeight: '600', color: text3, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '16px' },
     toast: { position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', background: dark ? '#1A1A1A' : '#111', color: '#fff', border: `1px solid ${border}`, padding: '10px 20px', borderRadius: '10px', fontSize: '14px', zIndex: 100, whiteSpace: 'nowrap' },
@@ -104,7 +104,11 @@ function makeStyles(dark) {
     pageSub: { fontSize: '14px', color: text3, marginBottom: '32px' },
     emptyState: { textAlign: 'center', color: text3, padding: '48px', fontSize: '14px' },
     emptyIcon: { fontSize: '28px', marginBottom: '10px' },
-    expandBtn: { background: 'none', border: 'none', color: '#6366F1', fontSize: '12px', cursor: 'pointer', padding: '4px 0', marginTop: '4px' },
+    figmaRow: { display: 'flex', gap: '8px', marginBottom: '16px' },
+    imagePreviewWrap: { marginBottom: '8px', position: 'relative', display: 'inline-block' },
+    imagePreview: { maxHeight: '120px', borderRadius: '8px', border: `1px solid ${border}` },
+    imageRemoveBtn: { position: 'absolute', top: '4px', right: '4px', background: '#111', color: '#fff', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    bg2, border, text1, text2, text3,
   }
 }
 
@@ -123,21 +127,11 @@ function Toast({ msg, s }) {
 
 function HistoryItem({ item, s }) {
   const [expanded, setExpanded] = useState(false)
-
   function stripMarkdown(text) {
-    return text
-      .replace(/\*\*(.+?)\*\*/g, '$1')
-      .replace(/\*(.+?)\*/g, '$1')
-      .replace(/#{1,6}\s/g, '')
-      .replace(/`(.+?)`/g, '$1')
-      .replace(/\[(.+?)\]\(.+?\)/g, '$1')
-      .replace(/\n/g, ' ')
-      .trim()
+    return text.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/#{1,6}\s/g, '').replace(/`(.+?)`/g, '$1').replace(/\[(.+?)\]\(.+?\)/g, '$1').replace(/\n/g, ' ').trim()
   }
-
   const preview = stripMarkdown(item.answer)
   const isLong = preview.length > 280
-
   return (
     <div style={s.historyItem}>
       <div style={s.historyQ}>
@@ -145,19 +139,10 @@ function HistoryItem({ item, s }) {
         {item.question}
       </div>
       <div style={s.historyA}>
-        {expanded
-          ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{item.answer}</ReactMarkdown>
-          : preview.substring(0, 280) + (isLong ? '...' : '')
-        }
+        {expanded ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{item.answer}</ReactMarkdown> : preview.substring(0, 280) + (isLong ? '...' : '')}
       </div>
-      {isLong && (
-        <button style={s.expandBtn} onClick={() => setExpanded(!expanded)}>
-          {expanded ? 'Show less ↑' : 'Show full answer ↓'}
-        </button>
-      )}
-      <div style={s.historyMeta}>
-        {new Date(item.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-      </div>
+      {isLong && <button style={s.expandBtn} onClick={() => setExpanded(!expanded)}>{expanded ? 'Show less ↑' : 'Show full answer ↓'}</button>}
+      <div style={s.historyMeta}>{new Date(item.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
     </div>
   )
 }
@@ -175,21 +160,23 @@ function LoginPage({ s, onSuccess }) {
       setError('Incorrect PIN. Please try again.')
       setShaking(true)
       setPin('')
-      setTimeout(() => setShaking(false), 500)
+      setTimeout(() => setShaking(false), 600)
     }
   }
 
   return (
     <div style={{ minHeight: '100vh', background: s.page.background, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: s.page.fontFamily }}>
+      <style>{`@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-8px)} 80%{transform:translateX(8px)} } .shake{animation:shake 0.5s;}`}</style>
       <div style={{ width: '100%', maxWidth: '400px', padding: '40px 24px', textAlign: 'center' }}>
-        <div style={{ width: '56px', height: '56px', background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', margin: '0 auto 24px' }}>🧠</div>
-        <div style={{ fontSize: '32px', fontWeight: '700', color: s.pageTitle.color, marginBottom: '8px', letterSpacing: '-0.5px' }}>Mind</div>
-        <div style={{ fontSize: '15px', color: s.pageSub.color, marginBottom: '40px', lineHeight: '1.6' }}>Your AI product assistant.<br />Ask anything about your projects.</div>
-        <div style={{ background: s.card.background, border: `1px solid ${s.card.border}`, borderRadius: '16px', padding: '28px' }}>
-          <div style={{ fontSize: '13px', fontWeight: '600', color: s.pageSub.color, marginBottom: '12px', textAlign: 'left' }}>Enter access PIN</div>
+        <div style={{ width: '64px', height: '64px', background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', margin: '0 auto 24px' }}>🧠</div>
+        <div style={{ fontSize: '36px', fontWeight: '700', color: s.text1, marginBottom: '8px', letterSpacing: '-0.5px' }}>Mind</div>
+        <div style={{ fontSize: '15px', color: s.text2, marginBottom: '40px', lineHeight: '1.7' }}>Your AI product assistant for Way.com.<br />Ask anything about your projects instantly.</div>
+        <div style={{ background: s.bg2, border: `1px solid ${s.border}`, borderRadius: '20px', padding: '32px' }}>
+          <div style={{ fontSize: '13px', fontWeight: '600', color: s.text2, marginBottom: '12px', textAlign: 'left' }}>Enter access PIN</div>
           <input
-            style={{ ...s.input, textAlign: 'center', fontSize: '20px', letterSpacing: '6px', fontWeight: '600', marginBottom: '12px', animation: shaking ? 'shake 0.5s' : 'none' }}
-            placeholder="••••••"
+            className={shaking ? 'shake' : ''}
+            style={{ width: '100%', padding: '14px', borderRadius: '12px', border: `1px solid ${shaking ? '#F87171' : s.border}`, marginBottom: '12px', fontSize: '22px', letterSpacing: '8px', fontWeight: '700', textAlign: 'center', boxSizing: 'border-box', outline: 'none', background: s.bg2, color: s.text1, fontFamily: 'monospace' }}
+            placeholder="······"
             value={pin}
             maxLength={6}
             onChange={e => { setPin(e.target.value.toUpperCase()); setError('') }}
@@ -197,24 +184,18 @@ function LoginPage({ s, onSuccess }) {
             autoFocus
           />
           {error && <div style={{ color: '#F87171', fontSize: '13px', marginBottom: '12px' }}>{error}</div>}
-          <button style={{ ...s.btn, width: '100%' }} onClick={handleSubmit}>Enter →</button>
+          <button style={{ ...s.btn, width: '100%', padding: '13px', fontSize: '15px' }} onClick={handleSubmit}>Enter →</button>
         </div>
-        <div style={{ fontSize: '12px', color: s.poweredBy.color, marginTop: '24px' }}>Powered by Way.com · Built with Claude AI</div>
+        <div style={{ fontSize: '12px', color: s.text3, marginTop: '28px' }}>Powered by Way.com · Built with Claude AI</div>
       </div>
-      <style>{`@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-8px)} 80%{transform:translateX(8px)} }`}</style>
     </div>
   )
 }
 
-
-
-
-
-
 function PMApp() {
-  const [figmaUrl, setFigmaUrl] = useState('')
   const { dark, toggle } = useTheme()
   const s = makeStyles(dark)
+  const [authed, setAuthed] = useState(() => sessionStorage.getItem('mind-auth') === 'true')
   const [projects, setProjects] = useState([])
   const [selectedProject, setSelectedProject] = useState(null)
   const [view, setView] = useState('home')
@@ -223,22 +204,19 @@ function PMApp() {
   const [newDesc, setNewDesc] = useState('')
   const [docTitle, setDocTitle] = useState('')
   const [docContent, setDocContent] = useState('')
+  const [figmaUrl, setFigmaUrl] = useState('')
   const [documents, setDocuments] = useState([])
   const [chatHistory, setChatHistory] = useState([])
   const [toast, setToast] = useState('')
   const [processing, setProcessing] = useState('')
   const [creating, setCreating] = useState(false)
   const fileInputRef = useRef(null)
-  const [authed, setAuthed] = useState(() => sessionStorage.getItem('mind-auth') === 'true')
 
-  useEffect(() => { fetchProjects() }, [])
+  useEffect(() => { if (authed) fetchProjects() }, [authed])
 
-  if (!authed) return <LoginPage s={s} onSuccess={() => setAuthed(true)} />
+  if (!authed) return <LoginPage s={{ ...s, text1: s.pageTitle?.color || (dark ? '#fff' : '#111'), text2: s.text2, text3: s.text3, bg2: s.card.background, border: s.card.border, btn: s.btn }} onSuccess={() => setAuthed(true)} />
 
-  function showToast(msg) {
-    setToast(msg)
-    setTimeout(() => setToast(''), 3000)
-  }
+  function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 3000) }
 
   async function fetchProjects() {
     const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false })
@@ -255,50 +233,11 @@ function PMApp() {
     if (data) setChatHistory(data)
   }
 
-  async function extractFigma() {
-    if (!figmaUrl.trim()) return
-    setProcessing('Reading Figma file...')
-    try {
-      const res = await fetch(`${SERVER}/extract-figma`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: figmaUrl })
-      })
-      const data = await res.json()
-      if (data.error) { showToast(`Figma error: ${data.error}`); return }
-      const { error } = await supabase.from('documents').insert([{
-        project_id: selectedProject.id,
-        title: `Figma: ${figmaUrl.split('/').pop()}`,
-        content: data.text.substring(0, 100000)
-      }])
-      if (error) showToast('Failed to save Figma content')
-      else {
-        showToast('Figma screens extracted!')
-        setFigmaUrl('')
-        fetchDocuments(selectedProject.id)
-      }
-    } catch (err) {
-      showToast(`Error: ${err.message}`)
-    }
-    setProcessing('')
-  }
-
-
-
-
-
-
-
   async function createProject() {
     if (!newName.trim()) return
     setCreating(true)
     const { data } = await supabase.from('projects').insert([{ name: newName, description: newDesc }]).select()
-    if (data) {
-      setProjects([data[0], ...projects])
-      setNewName('')
-      setNewDesc('')
-      showToast('Project created!')
-    }
+    if (data) { setProjects([data[0], ...projects]); setNewName(''); setNewDesc(''); showToast('Project created!') }
     setCreating(false)
   }
 
@@ -308,7 +247,6 @@ function PMApp() {
       try {
         let text = ''
         setProcessing(`Processing ${file.name}...`)
-
         if (file.name.toLowerCase().endsWith('.pdf')) {
           const formData = new FormData()
           formData.append('file', file)
@@ -331,25 +269,16 @@ function PMApp() {
         } else {
           text = await file.text()
         }
-
         // eslint-disable-next-line no-control-regex
         text = text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').trim()
-
         if (text.length > 0) {
-          const { error } = await supabase.from('documents').insert([{
-            project_id: selectedProject.id,
-            title: file.name,
-            content: text.substring(0, 100000)
-          }])
+          const { error } = await supabase.from('documents').insert([{ project_id: selectedProject.id, title: file.name, content: text.substring(0, 100000) }])
           if (error) showToast(`Failed: ${error.message}`)
           else showToast(`✓ ${file.name} uploaded!`)
         } else {
           showToast(`Could not extract text from ${file.name}`)
         }
-      } catch (err) {
-        console.error(err)
-        showToast(`Error: ${err.message}`)
-      }
+      } catch (err) { showToast(`Error: ${err.message}`) }
     }
     setProcessing('')
     fetchDocuments(selectedProject.id)
@@ -358,18 +287,23 @@ function PMApp() {
 
   async function uploadPasted() {
     if (!docTitle.trim() || !docContent.trim()) return
-    const { error } = await supabase.from('documents').insert([{
-      project_id: selectedProject.id,
-      title: docTitle,
-      content: docContent.substring(0, 100000)
-    }])
+    const { error } = await supabase.from('documents').insert([{ project_id: selectedProject.id, title: docTitle, content: docContent.substring(0, 100000) }])
     if (error) showToast('Upload failed')
-    else {
-      showToast('Document uploaded!')
-      setDocTitle('')
-      setDocContent('')
-      fetchDocuments(selectedProject.id)
-    }
+    else { showToast('Document uploaded!'); setDocTitle(''); setDocContent(''); fetchDocuments(selectedProject.id) }
+  }
+
+  async function extractFigma() {
+    if (!figmaUrl.trim()) return
+    setProcessing('Reading Figma file...')
+    try {
+      const res = await fetch(`${SERVER}/extract-figma`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: figmaUrl }) })
+      const data = await res.json()
+      if (data.error) { showToast(`Figma error: ${data.error}`); setProcessing(''); return }
+      const { error } = await supabase.from('documents').insert([{ project_id: selectedProject.id, title: `Figma: ${figmaUrl.split('/').slice(-1)[0] || 'design'}`, content: data.text.substring(0, 100000) }])
+      if (error) showToast('Failed to save Figma content')
+      else { showToast('Figma screens extracted!'); setFigmaUrl(''); fetchDocuments(selectedProject.id) }
+    } catch (err) { showToast(`Error: ${err.message}`) }
+    setProcessing('')
   }
 
   async function deleteDocument(id) {
@@ -378,25 +312,15 @@ function PMApp() {
     showToast('Deleted')
   }
 
-  function openProject(p) {
-    setSelectedProject(p)
-    fetchDocuments(p.id)
-    fetchChatHistory(p.id)
-    setTab('docs')
-    setView('project')
-  }
-
-  function copyLink(id) {
-    const url = `${window.location.origin}/chat/${id}`
-    navigator.clipboard.writeText(url)
-    showToast('Link copied!')
-  }
+  function openProject(p) { setSelectedProject(p); fetchDocuments(p.id); fetchChatHistory(p.id); setTab('docs'); setView('project') }
+  function copyLink(id) { navigator.clipboard.writeText(`${window.location.origin}/chat/${id}`); showToast('Link copied!') }
 
   function getDocIcon(title) {
     if (!title) return '📋'
     if (title.toLowerCase().endsWith('.pdf')) return '📄'
     if (title.match(/\.(png|jpg|jpeg|gif|webp)$/i)) return '🖼️'
     if (title.toLowerCase().endsWith('.docx')) return '📝'
+    if (title.startsWith('Figma:')) return '🎨'
     return '📋'
   }
 
@@ -419,7 +343,7 @@ function PMApp() {
           <button style={s.btn} onClick={createProject} disabled={creating}>{creating ? 'Creating...' : '+ Create project'}</button>
         </div>
         <div style={s.sectionLabel}>All projects — {projects.length}</div>
-        {projects.length === 0 && <div style={{ color: '#555', fontSize: '14px', padding: '20px 0' }}>No projects yet.</div>}
+        {projects.length === 0 && <div style={{ color: '#888', fontSize: '14px', padding: '20px 0' }}>No projects yet.</div>}
         <div style={s.grid}>
           {projects.map(p => (
             <div key={p.id} style={s.projectCard} onClick={() => openProject(p)}>
@@ -445,7 +369,7 @@ function PMApp() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button style={s.backBtn} onClick={() => setView('home')}>← Back</button>
           <Logo s={s} />
-          <span style={{ fontSize: '14px', color: '#555' }}>/ {selectedProject.name}</span>
+          <span style={{ fontSize: '14px', color: s.text2 }}>/ {selectedProject.name}</span>
         </div>
         <div style={s.headerRight}>
           <button style={s.themeBtn} onClick={toggle}>{dark ? '☀️ Light' : '🌙 Dark'}</button>
@@ -455,7 +379,7 @@ function PMApp() {
       <div style={s.container}>
         <div style={{ marginBottom: '24px' }}>
           <div style={s.pageTitle}>{selectedProject.name}</div>
-          {selectedProject.description && <div style={{ fontSize: '14px', color: '#555' }}>{selectedProject.description}</div>}
+          {selectedProject.description && <div style={{ fontSize: '14px', color: s.text2 }}>{selectedProject.description}</div>}
         </div>
         <div style={s.tabs}>
           <button style={tab === 'docs' ? s.tabActive : s.tab} onClick={() => setTab('docs')}>Documents {documents.length > 0 && `(${documents.length})`}</button>
@@ -466,12 +390,7 @@ function PMApp() {
 
         {tab === 'docs' && (
           <div>
-            {documents.length === 0 && (
-              <div style={{ ...s.card, ...s.emptyState }}>
-                <div style={s.emptyIcon}>📂</div>
-                No documents yet. Go to Upload tab to add documents.
-              </div>
-            )}
+            {documents.length === 0 && <div style={{ ...s.card, ...s.emptyState }}><div style={s.emptyIcon}>📂</div>No documents yet.</div>}
             {documents.map(doc => (
               <div key={doc.id} style={s.docItem}>
                 <div style={s.docIcon}>{getDocIcon(doc.title)}</div>
@@ -495,28 +414,16 @@ function PMApp() {
               <input ref={fileInputRef} type="file" accept="*/*" multiple style={{ display: 'none' }} onChange={handleFileUpload} />
             </div>
             {processing && <div style={s.processing}>{processing}</div>}
-            <div style={s.divider}>—  
-              
-              
 
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: s.text2, marginBottom: '8px' }}>Add Figma link</div>
+              <div style={s.figmaRow}>
+                <input style={{ ...s.input, marginBottom: 0, flex: 1 }} placeholder="https://www.figma.com/file/..." value={figmaUrl} onChange={e => setFigmaUrl(e.target.value)} />
+                <button style={s.btnSm} onClick={extractFigma} disabled={!figmaUrl.trim()}>Extract screens</button>
+              </div>
+            </div>
 
-              <div style={{ marginBottom: '16px' }}>
-  <div style={{ fontSize: '13px', fontWeight: '600', color: text2, marginBottom: '8px' }}>Or add Figma link</div>
-  <div style={{ display: 'flex', gap: '8px' }}>
-    <input
-      style={{ ...s.input, marginBottom: 0, flex: 1 }}
-      placeholder="https://www.figma.com/file/..."
-      value={figmaUrl}
-      onChange={e => setFigmaUrl(e.target.value)}
-    />
-    <button style={s.btnSm} onClick={extractFigma} disabled={!figmaUrl.trim()}>
-      Extract
-    </button>
-  </div>
-</div>
-
-              
-               or paste content manually —</div>
+            <div style={s.divider}>— or paste content manually —</div>
             <input style={s.input} placeholder="Document title (e.g. PRD v2, Walkthrough notes)" value={docTitle} onChange={e => setDocTitle(e.target.value)} />
             <textarea style={s.textarea} placeholder="Paste your document content here..." value={docContent} onChange={e => setDocContent(e.target.value)} />
             <button style={s.btn} onClick={uploadPasted}>Upload document</button>
@@ -525,31 +432,21 @@ function PMApp() {
 
         {tab === 'history' && (
           <div>
-            {chatHistory.length === 0 && (
-              <div style={{ ...s.card, ...s.emptyState }}>
-                <div style={s.emptyIcon}>💬</div>
-                No questions asked yet for this project.
-              </div>
-            )}
-            {chatHistory.map((item, i) => (
-              <HistoryItem key={i} item={item} s={s} />
-            ))}
+            {chatHistory.length === 0 && <div style={{ ...s.card, ...s.emptyState }}><div style={s.emptyIcon}>💬</div>No questions asked yet.</div>}
+            {chatHistory.map((item, i) => <HistoryItem key={i} item={item} s={s} />)}
           </div>
         )}
 
         {tab === 'share' && (
           <div style={s.card}>
             <div style={s.cardTitle}>Share with your team</div>
-            <p style={{ fontSize: '14px', color: '#666', marginBottom: '16px', lineHeight: '1.7' }}>
-              Share this link with designers, engineers, and QA. They'll get a clean chat interface for this project only — no PM controls.
+            <p style={{ fontSize: '14px', color: s.text2, marginBottom: '16px', lineHeight: '1.7' }}>
+              Share this link with designers, engineers, and QA. They'll get a clean chat interface for this project only.
             </p>
             <div style={s.linkBox}>
               <div style={s.linkText}>{chatUrl}</div>
               <button style={s.btnSm} onClick={() => copyLink(selectedProject.id)}>Copy link</button>
             </div>
-            <p style={{ fontSize: '12px', color: '#888', marginTop: '16px' }}>
-              Make sure all documents are uploaded before sharing.
-            </p>
           </div>
         )}
       </div>
@@ -559,14 +456,6 @@ function PMApp() {
 }
 
 function ChatApp() {
-  
-  const [chatImage, setChatImage] = useState(null)
-const [chatImagePreview, setChatImagePreview] = useState(null)
-const imageInputRef = useRef(null)
-  
-setChatImage(null)
-setChatImagePreview(null)
-
   const { projectId } = useParams()
   const { dark, toggle } = useTheme()
   const s = makeStyles(dark)
@@ -575,7 +464,10 @@ setChatImagePreview(null)
   const [question, setQuestion] = useState('')
   const [loading, setLoading] = useState(false)
   const [notFound, setNotFound] = useState(false)
+  const [chatImage, setChatImage] = useState(null)
+  const [chatImagePreview, setChatImagePreview] = useState(null)
   const chatEndRef = useRef(null)
+  const imageInputRef = useRef(null)
 
   useEffect(() => {
     async function loadProject() {
@@ -583,34 +475,11 @@ setChatImagePreview(null)
       if (data) setProject(data)
       else setNotFound(true)
     }
-
-    function handleChatImage(e) {
-      const file = e.target.files[0]
-      if (!file) return
-      const reader = new FileReader()
-      reader.onload = () => {
-        setChatImage({ base64: reader.result.split(',')[1], type: file.type })
-        setChatImagePreview(reader.result)
-      }
-      reader.readAsDataURL(file)
-    }
-
-
-
-
     async function loadHistory() {
-      const { data } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: true })
-        .limit(20)
+      const { data } = await supabase.from('messages').select('*').eq('project_id', projectId).order('created_at', { ascending: true }).limit(20)
       if (data && data.length > 0) {
         const restored = []
-        data.forEach(m => {
-          restored.push({ role: 'user', content: m.question })
-          restored.push({ role: 'assistant', content: m.answer })
-        })
+        data.forEach(m => { restored.push({ role: 'user', content: m.question }); restored.push({ role: 'assistant', content: m.answer }) })
         setMessages(restored)
       }
     }
@@ -618,34 +487,43 @@ setChatImagePreview(null)
     loadHistory()
   }, [projectId])
 
-  useEffect(() => {
-    if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  useEffect(() => { if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+
+  function handleChatImage(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      setChatImage({ base64: reader.result.split(',')[1], type: file.type })
+      setChatImagePreview(reader.result)
+    }
+    reader.readAsDataURL(file)
+  }
 
   async function askQuestion() {
-    if (!question.trim() || loading) return
+    if ((!question.trim() && !chatImage) || loading) return
     setLoading(true)
-    const userQuestion = question
+    const userQuestion = question || 'What do you see in this image? Does it relate to the project documents?'
     setQuestion('')
-    const newMessages = [...messages, { role: 'user', content: userQuestion }]
+    const imageToSend = chatImage
+    setChatImage(null)
+    setChatImagePreview(null)
+    const newMessages = [...messages, { role: 'user', content: userQuestion, image: chatImagePreview }]
     setMessages(newMessages)
 
     try {
       const { data: docs } = await supabase.from('documents').select('title, content').eq('project_id', projectId)
-
       if (!docs || docs.length === 0) {
-        setMessages(prev => [...prev, { role: 'assistant', content: 'No documents have been uploaded for this project yet. Please ask your PM to upload the project documents.' }])
+        setMessages(prev => [...prev, { role: 'assistant', content: 'No documents uploaded yet. Ask your PM to upload project documents.' }])
         setLoading(false)
         return
       }
-
       const context = docs.map(d => `--- Document: ${d.title} ---\n${d.content}`).join('\n\n')
       const history = newMessages.slice(0, -1).slice(-10).map(m => ({ role: m.role, content: m.content }))
-
       const res = await fetch(`${SERVER}/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: userQuestion, context, projectName: project.name, history, image: chatImage  })
+        body: JSON.stringify({ question: userQuestion, context, projectName: project.name, history, image: imageToSend })
       })
       const data = await res.json()
       const answer = data.answer
@@ -661,15 +539,15 @@ setChatImagePreview(null)
     <div style={{ ...s.chatPage, alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: '32px', marginBottom: '12px' }}>🔍</div>
-        <div style={{ fontSize: '18px', fontWeight: '600', color: '#FFFFFF', marginBottom: '8px' }}>Project not found</div>
-        <div style={{ fontSize: '14px', color: '#444' }}>Ask your PM for the correct link.</div>
+        <div style={{ fontSize: '18px', fontWeight: '600', color: s.text1, marginBottom: '8px' }}>Project not found</div>
+        <div style={{ fontSize: '14px', color: s.text2 }}>Ask your PM for the correct link.</div>
       </div>
     </div>
   )
 
   if (!project) return (
     <div style={{ ...s.chatPage, alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ color: '#555', fontSize: '14px' }}>Loading...</div>
+      <div style={{ color: s.text2, fontSize: '14px' }}>Loading...</div>
     </div>
   )
 
@@ -694,7 +572,12 @@ setChatImagePreview(null)
           )}
           {messages.map((m, i) => (
             m.role === 'user'
-              ? <div key={i} style={s.userMsg}><div style={s.userBubble}>{m.content}</div></div>
+              ? <div key={i} style={s.userMsg}>
+                  <div style={s.userBubble}>
+                    {m.image && <img src={m.image} alt="attached" style={{ maxWidth: '200px', borderRadius: '8px', marginBottom: '8px', display: 'block' }} />}
+                    {m.content}
+                  </div>
+                </div>
               : <div key={i} style={s.aiMsgRow}>
                   <div style={s.aiAvatar}>🧠</div>
                   <div style={s.aiBubble}>
@@ -705,39 +588,31 @@ setChatImagePreview(null)
           {loading && (
             <div style={s.aiMsgRow}>
               <div style={s.aiAvatar}>🧠</div>
-              <div style={{ ...s.aiBubble, color: '#666' }}>Searching documents...</div>
+              <div style={{ ...s.aiBubble, color: s.text2 }}>Searching documents...</div>
             </div>
           )}
           <div ref={chatEndRef} />
         </div>
 
-        <div>
-  {chatImagePreview && (
-    <div style={{ marginBottom: '8px', position: 'relative', display: 'inline-block' }}>
-      <img src={chatImagePreview} alt="attached" style={{ maxHeight: '120px', borderRadius: '8px', border: `1px solid ${s.aiBubble.border}` }} />
-      <button onClick={() => { setChatImage(null); setChatImagePreview(null) }} style={{ position: 'absolute', top: '4px', right: '4px', background: '#111', color: '#fff', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', fontSize: '11px' }}>×</button>
-    </div>
-  )}
-  <div style={s.inputWrap}>
-    <input
-      style={s.chatInput}
-      placeholder="Ask anything about this project..."
-      value={question}
-      onChange={e => setQuestion(e.target.value)}
-      onKeyDown={e => e.key === 'Enter' && askQuestion()}
-    />
-    <button onClick={() => imageInputRef.current.click()} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', padding: '4px 8px' }} title="Attach screenshot">📎</button>
-    <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleChatImage} />
-    <button style={s.sendBtn} onClick={askQuestion} disabled={loading}>
-      {loading ? '...' : 'Ask →'}
-    </button>
-  </div>
-</div>
+        {chatImagePreview && (
+          <div style={s.imagePreviewWrap}>
+            <img src={chatImagePreview} alt="attached" style={s.imagePreview} />
+            <button style={s.imageRemoveBtn} onClick={() => { setChatImage(null); setChatImagePreview(null) }}>×</button>
+          </div>
+        )}
 
-
-
-
-        
+        <div style={s.inputWrap}>
+          <input
+            style={s.chatInput}
+            placeholder="Ask anything about this project..."
+            value={question}
+            onChange={e => setQuestion(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && askQuestion()}
+          />
+          <button style={s.attachBtn} onClick={() => imageInputRef.current.click()} title="Attach screenshot">📎</button>
+          <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleChatImage} />
+          <button style={s.sendBtn} onClick={askQuestion} disabled={loading}>{loading ? '...' : 'Ask →'}</button>
+        </div>
         <div style={s.poweredBy}>Mind by Way.com</div>
       </div>
     </div>
