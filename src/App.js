@@ -302,6 +302,8 @@ function PMApp() {
   const [docTitle, setDocTitle] = useState('')
   const [docContent, setDocContent] = useState('')
   const [figmaUrl, setFigmaUrl] = useState('')
+  const [confluenceUrl, setConfluenceUrl] = useState('')
+  const [jiraKey, setJiraKey] = useState('')
   const [documents, setDocuments] = useState([])
   const [chatHistory, setChatHistory] = useState([])
   const [toast, setToast] = useState('')
@@ -414,6 +416,35 @@ function PMApp() {
     setProcessing('')
   }
 
+  async function extractConfluence() {
+    if (!confluenceUrl.trim()) return
+    setProcessing('Reading Confluence page...')
+    try {
+      const res = await fetch(`${SERVER}/extract-confluence`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: confluenceUrl }) })
+      const data = await res.json()
+      if (data.error) { showToast(data.error); setProcessing(''); return }
+      if (!data.text) { showToast(data.warning || 'No content found on that page.'); setProcessing(''); return }
+      const { error } = await supabase.from('documents').insert([{ project_id: selectedProject.id, title: (data.title || 'Confluence page').substring(0, 120), content: data.text.substring(0, 100000) }])
+      if (error) showToast('Failed to save Confluence content')
+      else { showToast('Confluence page imported!'); setConfluenceUrl(''); fetchDocuments(selectedProject.id) }
+    } catch (err) { showToast(`Error: ${err.message}`) }
+    setProcessing('')
+  }
+
+  async function extractJira() {
+    if (!jiraKey.trim()) return
+    setProcessing('Reading Jira ticket...')
+    try {
+      const res = await fetch(`${SERVER}/extract-jira`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: jiraKey }) })
+      const data = await res.json()
+      if (data.error) { showToast(data.error); setProcessing(''); return }
+      const { error } = await supabase.from('documents').insert([{ project_id: selectedProject.id, title: (data.title || `Jira ${jiraKey}`).substring(0, 120), content: data.text.substring(0, 100000) }])
+      if (error) showToast('Failed to save Jira content')
+      else { showToast('Jira ticket imported!'); setJiraKey(''); fetchDocuments(selectedProject.id) }
+    } catch (err) { showToast(`Error: ${err.message}`) }
+    setProcessing('')
+  }
+
   async function deleteDocument(id) {
     await supabase.from('documents').delete().eq('id', id)
     fetchDocuments(selectedProject.id)
@@ -442,6 +473,8 @@ function PMApp() {
     if (title.match(/\.(png|jpg|jpeg|gif|webp)$/i)) return '🖼️'
     if (title.toLowerCase().endsWith('.docx')) return '📝'
     if (title.startsWith('Figma:')) return '🎨'
+    if (title.startsWith('Confluence:')) return '📘'
+    if (title.startsWith('Jira:')) return '🧩'
     return '📋'
   }
 
@@ -621,6 +654,22 @@ function PMApp() {
               </div>
             </div>
 
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: s.text2, marginBottom: '8px' }}>Import from Confluence</div>
+              <div style={s.figmaRow}>
+                <input style={{ ...s.input, marginBottom: 0, flex: 1 }} placeholder="Paste Confluence page link" value={confluenceUrl} onChange={e => setConfluenceUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' && extractConfluence()} />
+                <button style={s.btnSm} onClick={extractConfluence} disabled={!confluenceUrl.trim()}>Import page</button>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: s.text2, marginBottom: '8px' }}>Import from Jira</div>
+              <div style={s.figmaRow}>
+                <input style={{ ...s.input, marginBottom: 0, flex: 1 }} placeholder="Jira ticket ID (e.g. WAY-123)" value={jiraKey} onChange={e => setJiraKey(e.target.value)} onKeyDown={e => e.key === 'Enter' && extractJira()} />
+                <button style={s.btnSm} onClick={extractJira} disabled={!jiraKey.trim()}>Import ticket</button>
+              </div>
+            </div>
+
             <div style={s.divider}>— or paste content manually —</div>
             <input style={s.input} placeholder="Document title (e.g. PRD v2, Walkthrough notes)" value={docTitle} onChange={e => setDocTitle(e.target.value)} />
             <textarea style={s.textarea} placeholder="Paste your document content here..." value={docContent} onChange={e => setDocContent(e.target.value)} />
@@ -672,8 +721,10 @@ function ChatApp() {
   const s = makeStyles(dark)
   const [project, setProject] = useState(null)
   const [notFound, setNotFound] = useState(false)
-  const [chats, setChats] = useState([])
-  const [activeChatId, setActiveChatId] = useState(null)
+  const HISTORY_ID = '__history__'
+  const [localChats, setLocalChats] = useState([])
+  const [historyMsgs, setHistoryMsgs] = useState([])
+  const [activeChatId, setActiveChatId] = useState(HISTORY_ID)
   const [question, setQuestion] = useState('')
   const [loading, setLoading] = useState(false)
   const [chatImage, setChatImage] = useState(null)
@@ -683,8 +734,8 @@ function ChatApp() {
   const chatEndRef = useRef(null)
   const imageInputRef = useRef(null)
 
-  const storeKey = `mind-chats-${projectId}`
-  function loadChats() {
+  const storeKey = `mind-localchats-${projectId}`
+  function loadLocalChats() {
     try { return JSON.parse(localStorage.getItem(storeKey)) || [] } catch { return [] }
   }
 
@@ -698,22 +749,28 @@ function ChatApp() {
     loadProject()
   }, [projectId])
 
-  // init chats from localStorage (per browser, per project)
+  // load the shared conversation history from the database (same for everyone, on any device)
   useEffect(() => {
-    let existing = loadChats()
-    if (!existing.length) {
-      existing = [{ id: newId(), title: 'New chat', messages: [], createdAt: Date.now() }]
+    async function loadHistory() {
+      const { data } = await supabase.from('messages').select('question, answer, created_at').eq('project_id', projectId).order('created_at', { ascending: true }).limit(100)
+      const msgs = []
+      ;(data || []).forEach(r => {
+        msgs.push({ role: 'user', content: r.question })
+        msgs.push({ role: 'assistant', content: r.answer })
+      })
+      setHistoryMsgs(msgs)
     }
-    setChats(existing)
-    setActiveChatId(existing[0].id)
+    loadHistory()
+    setLocalChats(loadLocalChats())
+    setActiveChatId(HISTORY_ID)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId])
 
-  // persist chats
+  // persist only the local "new chat" sessions (the history lives in the database)
   useEffect(() => {
-    if (chats.length) { try { localStorage.setItem(storeKey, JSON.stringify(chats)) } catch {} }
+    try { localStorage.setItem(storeKey, JSON.stringify(localChats)) } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chats])
+  }, [localChats])
 
   // responsive
   useEffect(() => {
@@ -722,14 +779,16 @@ function ChatApp() {
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
-  const activeChat = chats.find(c => c.id === activeChatId) || chats[0] || { id: null, messages: [] }
-  const messages = activeChat.messages || []
+  const isHistory = activeChatId === HISTORY_ID
+  const activeLocal = localChats.find(c => c.id === activeChatId)
+  const messages = isHistory ? historyMsgs : (activeLocal ? activeLocal.messages : [])
+  const sidebarChats = [{ id: HISTORY_ID, title: 'Conversation history', isHistory: true }, ...localChats]
 
-  useEffect(() => { if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' }) }, [activeChatId, chats, loading])
+  useEffect(() => { if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' }) }, [activeChatId, historyMsgs, localChats, loading])
 
   function newChat() {
     const fresh = { id: newId(), title: 'New chat', messages: [], createdAt: Date.now() }
-    setChats(prev => [fresh, ...prev])
+    setLocalChats(prev => [fresh, ...prev])
     setActiveChatId(fresh.id)
     if (isNarrow) setSidebarOpen(false)
   }
@@ -741,14 +800,9 @@ function ChatApp() {
 
   function deleteChat(id, e) {
     e.stopPropagation()
-    const next = chats.filter(c => c.id !== id)
-    if (!next.length) {
-      const fresh = { id: newId(), title: 'New chat', messages: [], createdAt: Date.now() }
-      setChats([fresh]); setActiveChatId(fresh.id)
-    } else {
-      setChats(next)
-      if (id === activeChatId) setActiveChatId(next[0].id)
-    }
+    if (id === HISTORY_ID) return  // the shared history can't be deleted
+    setLocalChats(prev => prev.filter(c => c.id !== id))
+    if (id === activeChatId) setActiveChatId(HISTORY_ID)
   }
 
   function handleChatImage(e) {
@@ -765,6 +819,7 @@ function ChatApp() {
   async function askQuestion() {
     if ((!question.trim() && !chatImage) || loading) return
     setLoading(true)
+    const askingHistory = isHistory
     const chatId = activeChatId
     const userQuestion = question || 'What do you see in this image? Does it relate to the project documents?'
     setQuestion('')
@@ -773,22 +828,33 @@ function ChatApp() {
     setChatImage(null)
     setChatImagePreview(null)
 
-    const current = chats.find(c => c.id === chatId)
-    const baseMessages = current ? current.messages : []
+    const baseMessages = askingHistory ? historyMsgs : ((localChats.find(c => c.id === chatId) || {}).messages || [])
     const userMsg = { role: 'user', content: userQuestion, image: imgPreview }
     const newMessages = [...baseMessages, userMsg]
 
-    // add the user message + auto-title the chat from the first question
-    setChats(prev => prev.map(c => c.id === chatId
-      ? { ...c, messages: newMessages, title: c.title === 'New chat' ? titleFrom(userQuestion) : c.title }
-      : c))
+    // show the question immediately
+    if (askingHistory) {
+      setHistoryMsgs(newMessages)
+    } else {
+      setLocalChats(prev => prev.map(c => c.id === chatId
+        ? { ...c, messages: newMessages, title: c.title === 'New chat' ? titleFrom(userQuestion) : c.title }
+        : c))
+    }
+
+    function appendAnswer(answer) {
+      if (askingHistory) {
+        setHistoryMsgs([...newMessages, { role: 'assistant', content: answer }])
+      } else {
+        setLocalChats(prev => prev.map(c => c.id === chatId
+          ? { ...c, messages: [...newMessages, { role: 'assistant', content: answer }] }
+          : c))
+      }
+    }
 
     try {
       const { data: docs } = await supabase.from('documents').select('title, content').eq('project_id', projectId)
       if (!docs || docs.length === 0) {
-        setChats(prev => prev.map(c => c.id === chatId
-          ? { ...c, messages: [...newMessages, { role: 'assistant', content: 'No documents uploaded yet. Ask your PM to upload project documents.' }] }
-          : c))
+        appendAnswer('No documents uploaded yet. Ask your PM to upload project documents.')
         setLoading(false)
         return
       }
@@ -802,13 +868,9 @@ function ChatApp() {
       const data = await res.json()
       const answer = data.answer || 'Something went wrong. Please try again.'
       await supabase.from('messages').insert([{ project_id: projectId, question: userQuestion, answer }])
-      setChats(prev => prev.map(c => c.id === chatId
-        ? { ...c, messages: [...newMessages, { role: 'assistant', content: answer }] }
-        : c))
+      appendAnswer(answer)
     } catch {
-      setChats(prev => prev.map(c => c.id === chatId
-        ? { ...c, messages: [...newMessages, { role: 'assistant', content: 'Something went wrong. Please try again.' }] }
-        : c))
+      appendAnswer('Something went wrong. Please try again.')
     }
     setLoading(false)
   }
@@ -849,15 +911,17 @@ function ChatApp() {
           <button style={s.newChatBtn} onClick={newChat}>+ New chat</button>
         </div>
         <div style={s.chatList}>
-          {chats.map(c => (
+          {sidebarChats.map(c => (
             <div
               key={c.id}
               className="mind-chat-item"
               style={c.id === activeChatId ? { ...s.chatListItem, ...s.chatListItemActive } : s.chatListItem}
               onClick={() => selectChat(c.id)}
             >
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{c.title || 'New chat'}</span>
-              <button style={s.chatDelBtn} onClick={(e) => deleteChat(c.id, e)} title="Delete chat">×</button>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                {c.isHistory ? '🕘 ' : ''}{c.title || 'New chat'}
+              </span>
+              {!c.isHistory && <button style={s.chatDelBtn} onClick={(e) => deleteChat(c.id, e)} title="Delete chat">×</button>}
             </div>
           ))}
         </div>
