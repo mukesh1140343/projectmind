@@ -59,24 +59,41 @@ app.post('/ask', async (req, res) => {
         { role: 'user', content: userContent }
       ]
     })
-    res.json({ answer: message.content[0].text })
+    // Find the text block defensively (don't assume content[0] is text)
+    const textBlock = message.content.find(b => b.type === 'text')
+    res.json({ answer: textBlock ? textBlock.text : 'No response generated.' })
   } catch (error) {
     console.error(error)
     res.status(500).json({ error: 'Something went wrong' })
   }
 })
 
+// ---- PDF EXTRACTION (FIXED) ----
+// The common reason PDF upload "silently" fails is that requiring the package
+// root ("pdf-parse") runs its built-in debug/test harness, which tries to open a
+// sample file that doesn't exist in production and throws ENOENT. Importing the
+// library file directly avoids that entirely. Also make sure version 1.1.1 is
+// installed:  cd server && npm install pdf-parse@1.1.1
 app.post('/extract-pdf', upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file received by server' })
+  const filePath = req.file.path
   try {
-    const dataBuffer = fs.readFileSync(req.file.path)
-    const pdfParse = require('pdf-parse')
+    const pdfParse = require('pdf-parse/lib/pdf-parse.js')
+    const dataBuffer = fs.readFileSync(filePath)
     const data = await pdfParse(dataBuffer)
-    fs.unlinkSync(req.file.path)
-    res.json({ text: data.text })
+    fs.unlinkSync(filePath)
+    const text = (data.text || '').trim()
+    if (!text) {
+      return res.json({
+        text: '',
+        warning: 'No selectable text found — this looks like a scanned/image PDF. Upload it as a screenshot (PNG/JPG) instead, or use a text-based PDF.'
+      })
+    }
+    res.json({ text })
   } catch (error) {
-    console.error('PDF error:', error.message)
-    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path)
-    res.status(500).json({ error: error.message })
+    console.error('PDF error:', error)
+    if (fs.existsSync(filePath)) { try { fs.unlinkSync(filePath) } catch (e) {} }
+    res.status(500).json({ error: error.message || 'Failed to read PDF' })
   }
 })
 
@@ -97,7 +114,8 @@ app.post('/extract-image', upload.single('file'), async (req, res) => {
       }]
     })
     fs.unlinkSync(req.file.path)
-    res.json({ text: message.content[0].text })
+    const textBlock = message.content.find(b => b.type === 'text')
+    res.json({ text: textBlock ? textBlock.text : '' })
   } catch (error) {
     console.error('Image error:', error.message)
     if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path)
@@ -132,4 +150,7 @@ app.post('/extract-figma', async (req, res) => {
 })
 
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads')
-app.listen(3001, () => console.log('Server running on port 3001'))
+
+// Use the port the host (e.g. Render) provides, fall back to 3001 locally
+const PORT = process.env.PORT || 3001
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`))

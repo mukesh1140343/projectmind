@@ -6,6 +6,30 @@ import { supabase } from './supabase'
 
 const SERVER = process.env.REACT_APP_SERVER_URL || 'http://localhost:3001'
 const ACCESS_PIN = process.env.REACT_APP_ACCESS_PIN || 'MIND01'
+const ADMIN_PIN = process.env.REACT_APP_ADMIN_PIN || 'WAY999'
+const MINUTES_PER_QUESTION = 5
+
+// ---------- helpers ----------
+function newId() {
+  return (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
+}
+
+function titleFrom(text) {
+  const t = (text || '').trim().replace(/\s+/g, ' ')
+  if (!t) return 'New chat'
+  return t.length > 36 ? t.slice(0, 36) + '…' : t
+}
+
+function formatMinutes(totalMin) {
+  if (!totalMin) return '0 min'
+  if (totalMin < 60) return `${totalMin} min`
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
+  if (m === 0) return `${h} hr${h > 1 ? 's' : ''}`
+  return `${h}h ${m}m`
+}
 
 function useTheme() {
   const [dark, setDark] = useState(() => localStorage.getItem('mind-theme') === 'dark')
@@ -29,7 +53,9 @@ function makeStyles(dark) {
   const text3 = dark ? '#444444' : '#AAAAAA'
   const inputBg = dark ? '#1A1A1A' : '#FFFFFF'
   const tabBg = dark ? '#161616' : '#EBEBED'
-  const tabActive = dark ? '#252525' : '#FFFFFF'
+  const tabActiveBg = dark ? '#252525' : '#FFFFFF'
+  const shadow = dark ? '0 1px 2px rgba(0,0,0,0.5)' : '0 1px 3px rgba(16,24,40,0.06), 0 1px 2px rgba(16,24,40,0.04)'
+  const shadowLg = dark ? '0 12px 40px rgba(0,0,0,0.55)' : '0 12px 40px rgba(16,24,40,0.10)'
   return {
     page: { minHeight: '100vh', background: bg, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' },
     header: { background: bg2, borderBottom: `1px solid ${border}`, padding: '14px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10 },
@@ -41,15 +67,16 @@ function makeStyles(dark) {
     pmBadge: { background: dark ? '#1E1B4B' : '#EDE9FE', color: dark ? '#818CF8' : '#5B21B6' },
     themeBtn: { background: bg3, border: `1px solid ${border}`, color: text2, fontSize: '13px', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer' },
     container: { maxWidth: '920px', margin: '0 auto', padding: '32px 24px' },
-    card: { background: bg2, borderRadius: '16px', padding: '24px', marginBottom: '16px', border: `1px solid ${border}` },
+    card: { background: bg2, borderRadius: '18px', padding: '24px', marginBottom: '16px', border: `1px solid ${border}`, boxShadow: shadow },
     cardTitle: { fontSize: '14px', fontWeight: '600', color: text1, marginBottom: '16px' },
-    input: { width: '100%', padding: '11px 14px', borderRadius: '10px', border: `1px solid ${border2}`, marginBottom: '10px', fontSize: '14px', boxSizing: 'border-box', outline: 'none', background: inputBg, color: text1 },
+    input: { width: '100%', padding: '12px 14px', borderRadius: '12px', border: `1px solid ${border2}`, marginBottom: '10px', fontSize: '14px', boxSizing: 'border-box', outline: 'none', background: inputBg, color: text1 },
     textarea: { width: '100%', padding: '11px 14px', borderRadius: '10px', border: `1px solid ${border2}`, marginBottom: '10px', fontSize: '14px', height: '160px', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit', background: inputBg, color: text1 },
-    btn: { background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', color: '#fff', border: 'none', padding: '11px 22px', borderRadius: '10px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' },
+    btn: { background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', color: '#fff', border: 'none', padding: '12px 22px', borderRadius: '12px', fontSize: '14px', cursor: 'pointer', fontWeight: '600', boxShadow: '0 4px 14px rgba(99,102,241,0.30)' },
     btnSm: { background: '#6366F1', color: '#fff', border: 'none', padding: '7px 14px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' },
     btnDanger: { background: 'transparent', color: '#F87171', border: '1px solid #3F1515', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' },
     grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' },
-    projectCard: { background: bg2, border: `1px solid ${border}`, borderRadius: '16px', padding: '20px', cursor: 'pointer' },
+    projectCard: { background: bg2, border: `1px solid ${border}`, borderRadius: '18px', padding: '20px', cursor: 'pointer', boxShadow: shadow },
+    cardDelBtn: { background: 'none', border: 'none', fontSize: '15px', cursor: 'pointer', padding: '2px 6px', borderRadius: '8px', lineHeight: 1, opacity: 0.7 },
     projectName: { fontSize: '15px', fontWeight: '600', color: text1, marginBottom: '6px' },
     projectDesc: { fontSize: '13px', color: text2, marginBottom: '16px', lineHeight: '1.5' },
     projectFooter: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
@@ -57,7 +84,27 @@ function makeStyles(dark) {
     projectArrow: { fontSize: '13px', color: '#6366F1', fontWeight: '600' },
     tabs: { display: 'flex', gap: '2px', background: tabBg, borderRadius: '12px', padding: '4px', marginBottom: '24px', border: `1px solid ${border}` },
     tab: { flex: 1, padding: '8px 12px', borderRadius: '9px', border: 'none', background: 'none', fontSize: '13px', cursor: 'pointer', color: text2, fontWeight: '500' },
-    tabActive: { flex: 1, padding: '8px 12px', borderRadius: '9px', border: 'none', background: tabActive, fontSize: '13px', cursor: 'pointer', color: text1, fontWeight: '600', boxShadow: dark ? 'none' : '0 1px 3px rgba(0,0,0,0.1)' },
+    tabActive: { flex: 1, padding: '8px 12px', borderRadius: '9px', border: 'none', background: tabActiveBg, fontSize: '13px', cursor: 'pointer', color: text1, fontWeight: '600', boxShadow: dark ? 'none' : '0 1px 3px rgba(0,0,0,0.1)' },
+    // home toggle (Dashboard / Projects)
+    homeToggle: { display: 'inline-flex', gap: '2px', background: tabBg, borderRadius: '12px', padding: '4px', marginBottom: '28px', border: `1px solid ${border}` },
+    homeToggleBtn: { padding: '8px 18px', borderRadius: '9px', border: 'none', background: 'none', fontSize: '13px', cursor: 'pointer', color: text2, fontWeight: '600' },
+    homeToggleActive: { padding: '8px 18px', borderRadius: '9px', border: 'none', background: tabActiveBg, fontSize: '13px', cursor: 'pointer', color: text1, fontWeight: '600', boxShadow: dark ? 'none' : '0 1px 3px rgba(0,0,0,0.1)' },
+    // KPI cards
+    kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '16px', marginBottom: '28px' },
+    kpiCard: { background: bg2, border: `1px solid ${border}`, borderRadius: '18px', padding: '22px', boxShadow: shadow },
+    kpiTop: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' },
+    kpiIcon: { width: '40px', height: '40px', borderRadius: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '19px' },
+    kpiLabel: { fontSize: '13px', color: text2, fontWeight: '500' },
+    kpiValue: { fontSize: '32px', fontWeight: '700', color: text1, letterSpacing: '-0.6px', lineHeight: 1.1 },
+    kpiSub: { fontSize: '12px', color: text3, marginTop: '6px' },
+    // table
+    tableCard: { background: bg2, border: `1px solid ${border}`, borderRadius: '18px', overflow: 'hidden', boxShadow: shadow },
+    tableHeadRow: { display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', padding: '14px 22px', borderBottom: `1px solid ${border}`, fontSize: '11px', fontWeight: '700', color: text3, textTransform: 'uppercase', letterSpacing: '0.7px' },
+    tableRow: { display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', padding: '15px 22px', borderBottom: `1px solid ${border}`, fontSize: '14px', color: text1, alignItems: 'center' },
+    tableCellName: { fontWeight: '600', color: text1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: '12px' },
+    tableCellNum: { color: text2, fontVariantNumeric: 'tabular-nums' },
+    tableCaption: { fontSize: '12px', color: text3, marginTop: '12px', textAlign: 'center' },
+    // upload / docs
     uploadBox: { border: `1px dashed ${border2}`, borderRadius: '12px', padding: '32px', textAlign: 'center', cursor: 'pointer', marginBottom: '16px', background: bg3 },
     uploadText: { fontSize: '14px', fontWeight: '600', color: text1 },
     uploadSub: { fontSize: '12px', color: text3, marginTop: '6px' },
@@ -75,24 +122,36 @@ function makeStyles(dark) {
     historyA: { fontSize: '13px', color: text2, lineHeight: '1.6' },
     historyMeta: { fontSize: '11px', color: text3, marginTop: '10px' },
     expandBtn: { background: 'none', border: 'none', color: '#6366F1', fontSize: '12px', cursor: 'pointer', padding: '4px 0', marginTop: '4px' },
-    chatPage: { minHeight: '100vh', background: bg, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', display: 'flex', flexDirection: 'column' },
-    chatHeader: { background: bg2, borderBottom: `1px solid ${border}`, padding: '16px 28px', display: 'flex', alignItems: 'center', gap: '14px' },
-    chatHeaderInfo: { flex: 1 },
-    chatProjectName: { fontSize: '17px', fontWeight: '700', color: text1 },
-    chatProjectSub: { fontSize: '12px', color: text3, marginTop: '2px' },
-    chatBody: { flex: 1, maxWidth: '800px', width: '100%', margin: '0 auto', padding: '28px 24px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' },
-    chatBox: { flex: 1, padding: '8px 0', minHeight: '400px', maxHeight: '520px', overflowY: 'auto', marginBottom: '16px' },
-    emptyChat: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '360px', gap: '12px' },
+
+    // ---------- CHAT (two-pane) ----------
+    chatLayout: { display: 'flex', height: '100vh', width: '100%', background: bg, overflow: 'hidden', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' },
+    chatSidebar: { width: '280px', flexShrink: 0, background: bg2, borderRight: `1px solid ${border}`, display: 'flex', flexDirection: 'column' },
+    sidebarHeader: { padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${border}` },
+    sidebarFooter: { padding: '14px 16px', borderTop: `1px solid ${border}`, fontSize: '12px', color: text3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+    newChatBtn: { width: '100%', background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', color: '#fff', border: 'none', padding: '11px', borderRadius: '11px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' },
+    chatList: { flex: 1, overflowY: 'auto', padding: '8px' },
+    chatListItem: { padding: '10px 12px', borderRadius: '10px', cursor: 'pointer', fontSize: '13px', color: text2, marginBottom: '2px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' },
+    chatListItemActive: { background: bg3, color: text1, fontWeight: '600' },
+    chatDelBtn: { background: 'none', border: 'none', color: text3, fontSize: '15px', cursor: 'pointer', lineHeight: 1, padding: '0 2px', flexShrink: 0 },
+    iconBtn: { background: bg3, border: `1px solid ${border}`, color: text2, fontSize: '16px', cursor: 'pointer', width: '34px', height: '34px', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    chatMain: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh' },
+    chatMainHeader: { padding: '12px 18px', borderBottom: `1px solid ${border}`, display: 'flex', alignItems: 'center', gap: '12px', background: bg2 },
+    chatProjectName: { fontSize: '15px', fontWeight: '700', color: text1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+    chatProjectSub: { fontSize: '12px', color: text3, marginTop: '1px' },
+    chatScroll: { flex: 1, overflowY: 'auto', padding: '24px 20px', minHeight: 0 },
+    chatInner: { maxWidth: '780px', margin: '0 auto', width: '100%' },
+    chatInputBar: { borderTop: `1px solid ${border}`, padding: '14px 20px', background: bg2, flexShrink: 0 },
+    emptyChat: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', gap: '12px', textAlign: 'center' },
     emptyChatIcon: { width: '56px', height: '56px', background: bg2, borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', border: `1px solid ${border}` },
     emptyChatTitle: { fontSize: '17px', fontWeight: '600', color: text1 },
-    emptyChatSub: { fontSize: '13px', color: text3 },
+    emptyChatSub: { fontSize: '13px', color: text3, maxWidth: '320px' },
     userMsg: { display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' },
-    userBubble: { background: '#6366F1', borderRadius: '18px 18px 4px 18px', padding: '12px 18px', maxWidth: '75%', color: '#FFFFFF', fontSize: '14px', lineHeight: '1.6' },
+    userBubble: { background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: '18px 18px 4px 18px', padding: '12px 18px', maxWidth: '75%', color: '#FFFFFF', fontSize: '14px', lineHeight: '1.6', boxShadow: '0 4px 14px rgba(99,102,241,0.25)' },
     aiMsgRow: { display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'flex-start' },
     aiAvatar: { width: '32px', height: '32px', background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0, marginTop: '2px' },
     aiBubble: { background: bg2, border: `1px solid ${border}`, borderRadius: '4px 18px 18px 18px', padding: '14px 18px', maxWidth: '82%', fontSize: '14px', lineHeight: '1.7', color: text1 },
-    inputWrap: { background: bg2, borderRadius: '16px', border: `1px solid ${border2}`, padding: '8px 8px 8px 18px', display: 'flex', alignItems: 'center', gap: '8px' },
-    chatInput: { flex: 1, border: 'none', fontSize: '14px', outline: 'none', fontFamily: 'inherit', background: 'transparent', color: text1 },
+    inputWrap: { background: bg2, borderRadius: '16px', border: `1px solid ${border2}`, padding: '6px 6px 6px 18px', display: 'flex', alignItems: 'center', gap: '8px' },
+    chatInput: { flex: 1, border: 'none', fontSize: '14px', outline: 'none', fontFamily: 'inherit', background: 'transparent', color: text1, padding: '6px 0' },
     sendBtn: { background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', fontWeight: '600', whiteSpace: 'nowrap' },
     attachBtn: { background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', padding: '4px 8px', color: text2 },
     backBtn: { background: bg3, border: `1px solid ${border}`, color: text2, fontSize: '13px', cursor: 'pointer', padding: '6px 12px', borderRadius: '8px' },
@@ -108,8 +167,38 @@ function makeStyles(dark) {
     imagePreviewWrap: { marginBottom: '8px', position: 'relative', display: 'inline-block' },
     imagePreview: { maxHeight: '120px', borderRadius: '8px', border: `1px solid ${border}` },
     imageRemoveBtn: { position: 'absolute', top: '4px', right: '4px', background: '#111', color: '#fff', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-    bg2, border, text1, text2, text3,
+    dangerZone: { marginTop: '24px', background: dark ? '#1A0F0F' : '#FEF2F2', border: dark ? '1px solid #3F1D1D' : '1px solid #FECACA', borderRadius: '16px', padding: '20px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' },
+    dangerTitle: { fontSize: '14px', fontWeight: '700', color: dark ? '#F87171' : '#B91C1C' },
+    dangerSub: { fontSize: '12px', color: dark ? '#9A6B6B' : '#C26B6B', marginTop: '4px', maxWidth: '420px', lineHeight: 1.5 },
+    btnDangerSolid: { background: '#DC2626', color: '#fff', border: 'none', padding: '11px 20px', borderRadius: '12px', fontSize: '13px', cursor: 'pointer', fontWeight: '600', whiteSpace: 'nowrap', boxShadow: '0 4px 14px rgba(220,38,38,0.30)' },
+    adminPill: { fontSize: '11px', fontWeight: '700', padding: '3px 10px', borderRadius: '20px', background: dark ? '#3F1D1D' : '#FEE2E2', color: dark ? '#FCA5A5' : '#B91C1C' },
+    footer: { textAlign: 'center', fontSize: '12px', color: text3, marginTop: '40px', paddingBottom: '8px' },
+    shadowLg,
+    bg, bg2, bg3, border, border2, text1, text2, text3,
   }
+}
+
+function GlobalStyles() {
+  return (
+    <style>{`
+      * { box-sizing: border-box; }
+      body { margin: 0; }
+      button { transition: transform .12s ease, opacity .12s ease, box-shadow .15s ease, background .15s ease; }
+      button:hover:not(:disabled) { opacity: .93; }
+      button:active:not(:disabled) { transform: scale(.98); }
+      button:disabled { opacity: .55; cursor: default; }
+      input, textarea { transition: border-color .15s ease, box-shadow .15s ease; }
+      input:focus, textarea:focus { border-color: #6366F1 !important; box-shadow: 0 0 0 3px rgba(99,102,241,0.16); }
+      .mind-card { transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease; }
+      .mind-card:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(16,24,40,0.10); border-color: rgba(99,102,241,0.35); }
+      .mind-chat-item:hover { background: rgba(127,127,127,0.12) !important; }
+      .mind-row:hover { background: rgba(99,102,241,0.05); }
+      ::-webkit-scrollbar { width: 10px; height: 10px; }
+      ::-webkit-scrollbar-thumb { background: rgba(127,127,127,0.35); border-radius: 10px; }
+      ::-webkit-scrollbar-thumb:hover { background: rgba(127,127,127,0.55); }
+      ::-webkit-scrollbar-track { background: transparent; }
+    `}</style>
+  )
 }
 
 function Logo({ s }) {
@@ -153,9 +242,13 @@ function LoginPage({ s, onSuccess }) {
   const [shaking, setShaking] = useState(false)
 
   function handleSubmit() {
-    if (pin.toUpperCase() === ACCESS_PIN.toUpperCase()) {
+    const entered = pin.toUpperCase()
+    const isAdmin = entered === ADMIN_PIN.toUpperCase()
+    const isUser = entered === ACCESS_PIN.toUpperCase()
+    if (isAdmin || isUser) {
       sessionStorage.setItem('mind-auth', 'true')
-      onSuccess()
+      sessionStorage.setItem('mind-admin', isAdmin ? 'true' : 'false')
+      onSuccess(isAdmin)
     } else {
       setError('Incorrect PIN. Please try again.')
       setShaking(true)
@@ -165,20 +258,21 @@ function LoginPage({ s, onSuccess }) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: s.page.background, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: s.page.fontFamily }}>
+    <div style={{ minHeight: '100vh', background: s.page.background, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: s.page.fontFamily, position: 'relative', overflow: 'hidden' }}>
       <style>{`@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-8px)} 80%{transform:translateX(8px)} } .shake{animation:shake 0.5s;}`}</style>
-      <div style={{ width: '100%', maxWidth: '400px', padding: '40px 24px', textAlign: 'center' }}>
-        <div style={{ width: '64px', height: '64px', background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', margin: '0 auto 24px' }}>🧠</div>
+      <div style={{ position: 'absolute', top: '-10%', left: '50%', transform: 'translateX(-50%)', width: '520px', height: '520px', background: 'radial-gradient(circle, rgba(139,92,246,0.18), rgba(99,102,241,0) 70%)', pointerEvents: 'none' }} />
+      <div style={{ width: '100%', maxWidth: '400px', padding: '40px 24px', textAlign: 'center', position: 'relative' }}>
+        <div style={{ width: '64px', height: '64px', background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', margin: '0 auto 24px', boxShadow: '0 10px 30px rgba(99,102,241,0.35)' }}>🧠</div>
         <div style={{ fontSize: '36px', fontWeight: '700', color: s.text1, marginBottom: '8px', letterSpacing: '-0.5px' }}>Mind</div>
         <div style={{ fontSize: '15px', color: s.text2, marginBottom: '40px', lineHeight: '1.7' }}>Your AI product assistant for Way.com.<br />Ask anything about your projects instantly.</div>
-        <div style={{ background: s.bg2, border: `1px solid ${s.border}`, borderRadius: '20px', padding: '32px' }}>
+        <div style={{ background: s.bg2, border: `1px solid ${s.border}`, borderRadius: '20px', padding: '32px', boxShadow: s.shadowLg }}>
           <div style={{ fontSize: '13px', fontWeight: '600', color: s.text2, marginBottom: '12px', textAlign: 'left' }}>Enter access PIN</div>
           <input
             className={shaking ? 'shake' : ''}
             style={{ width: '100%', padding: '14px', borderRadius: '12px', border: `1px solid ${shaking ? '#F87171' : s.border}`, marginBottom: '12px', fontSize: '22px', letterSpacing: '8px', fontWeight: '700', textAlign: 'center', boxSizing: 'border-box', outline: 'none', background: s.bg2, color: s.text1, fontFamily: 'monospace' }}
             placeholder="······"
             value={pin}
-            maxLength={6}
+            maxLength={10}
             onChange={e => { setPin(e.target.value.toUpperCase()); setError('') }}
             onKeyDown={e => e.key === 'Enter' && handleSubmit()}
             autoFocus
@@ -186,19 +280,22 @@ function LoginPage({ s, onSuccess }) {
           {error && <div style={{ color: '#F87171', fontSize: '13px', marginBottom: '12px' }}>{error}</div>}
           <button style={{ ...s.btn, width: '100%', padding: '13px', fontSize: '15px' }} onClick={handleSubmit}>Enter →</button>
         </div>
-        <div style={{ fontSize: '12px', color: s.text3, marginTop: '28px' }}>Powered by Way.com · Built with Claude AI</div>
+        <div style={{ fontSize: '12px', color: s.text3, marginTop: '28px' }}>Mind AI built by Mukesh for Way with ❤️</div>
       </div>
     </div>
   )
 }
 
+// ---------------- PM PORTAL ----------------
 function PMApp() {
   const { dark, toggle } = useTheme()
   const s = makeStyles(dark)
   const [authed, setAuthed] = useState(() => sessionStorage.getItem('mind-auth') === 'true')
+  const [isAdmin, setIsAdmin] = useState(() => sessionStorage.getItem('mind-admin') === 'true')
   const [projects, setProjects] = useState([])
   const [selectedProject, setSelectedProject] = useState(null)
   const [view, setView] = useState('home')
+  const [homeTab, setHomeTab] = useState('dashboard') // dashboard | projects
   const [tab, setTab] = useState('docs')
   const [newName, setNewName] = useState('')
   const [newDesc, setNewDesc] = useState('')
@@ -210,17 +307,27 @@ function PMApp() {
   const [toast, setToast] = useState('')
   const [processing, setProcessing] = useState('')
   const [creating, setCreating] = useState(false)
+  const [msgCounts, setMsgCounts] = useState({})
+  const [totalQuestions, setTotalQuestions] = useState(0)
   const fileInputRef = useRef(null)
 
-  useEffect(() => { if (authed) fetchProjects() }, [authed])
+  useEffect(() => { if (authed) { fetchProjects(); fetchStats() } }, [authed])
 
-  if (!authed) return <LoginPage s={{ ...s, text1: s.pageTitle?.color || (dark ? '#fff' : '#111'), text2: s.text2, text3: s.text3, bg2: s.card.background, border: s.card.border, btn: s.btn }} onSuccess={() => setAuthed(true)} />
+  if (!authed) return <LoginPage s={{ ...s, text1: s.pageTitle?.color || (dark ? '#fff' : '#111'), text2: s.text2, text3: s.text3, bg2: s.card.background, border: s.card.border, btn: s.btn }} onSuccess={(admin) => { setAuthed(true); setIsAdmin(admin) }} />
 
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 3000) }
 
   async function fetchProjects() {
     const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false })
     if (data) setProjects(data)
+  }
+
+  async function fetchStats() {
+    const { data } = await supabase.from('messages').select('project_id')
+    const counts = {}
+    ;(data || []).forEach(r => { counts[r.project_id] = (counts[r.project_id] || 0) + 1 })
+    setMsgCounts(counts)
+    setTotalQuestions((data || []).length)
   }
 
   async function fetchDocuments(projectId) {
@@ -253,6 +360,7 @@ function PMApp() {
           const res = await fetch(`${SERVER}/extract-pdf`, { method: 'POST', body: formData })
           const data = await res.json()
           if (data.error) { showToast(`PDF error: ${data.error}`); continue }
+          if (!data.text && data.warning) { showToast(data.warning); continue }
           text = data.text || ''
         } else if (file.type.startsWith('image/')) {
           const formData = new FormData()
@@ -315,6 +423,19 @@ function PMApp() {
   function openProject(p) { setSelectedProject(p); fetchDocuments(p.id); fetchChatHistory(p.id); setTab('docs'); setView('project') }
   function copyLink(id) { navigator.clipboard.writeText(`${window.location.origin}/chat/${id}`); showToast('Link copied!') }
 
+  async function deleteProject(p) {
+    if (!window.confirm(`Delete "${p.name}"?\n\nThis permanently removes the project, all its documents, and its chat history. This cannot be undone.`)) return
+    await supabase.from('messages').delete().eq('project_id', p.id)
+    await supabase.from('documents').delete().eq('project_id', p.id)
+    const { error } = await supabase.from('projects').delete().eq('id', p.id)
+    if (error) { showToast(`Delete failed: ${error.message}`); return }
+    setProjects(prev => prev.filter(x => x.id !== p.id))
+    setMsgCounts(prev => { const n = { ...prev }; delete n[p.id]; return n })
+    fetchStats()
+    if (selectedProject && selectedProject.id === p.id) setView('home')
+    showToast('Project deleted')
+  }
+
   function getDocIcon(title) {
     if (!title) return '📋'
     if (title.toLowerCase().endsWith('.pdf')) return '📄'
@@ -324,55 +445,132 @@ function PMApp() {
     return '📋'
   }
 
-  if (view === 'home') return (
-    <div style={s.page}>
-      <div style={s.header}>
-        <Logo s={s} />
-        <div style={s.headerRight}>
-          <button style={s.themeBtn} onClick={toggle}>{dark ? '☀️ Light' : '🌙 Dark'}</button>
-          <span style={{ ...s.badge, ...s.pmBadge }}>PM Portal</span>
+  // ----- HOME (Dashboard + Projects) -----
+  if (view === 'home') {
+    const sortedProjects = [...projects].sort((a, b) => (msgCounts[b.id] || 0) - (msgCounts[a.id] || 0))
+    const totalMinutesSaved = totalQuestions * MINUTES_PER_QUESTION
+
+    return (
+      <div style={s.page}>
+        <div style={s.header}>
+          <Logo s={s} />
+          <div style={s.headerRight}>
+            <button style={s.themeBtn} onClick={toggle}>{dark ? '☀️ Light' : '🌙 Dark'}</button>
+            {isAdmin && <span style={s.adminPill}>Admin</span>}
+            <span style={{ ...s.badge, ...s.pmBadge }}>PM Portal</span>
+          </div>
         </div>
-      </div>
-      <div style={s.container}>
-        <div style={s.pageTitle}>Your projects</div>
-        <div style={s.pageSub}>Create a project, upload docs, share the link with your team</div>
-        <div style={s.card}>
-          <div style={s.cardTitle}>New project</div>
-          <input style={s.input} placeholder="Project name *" value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && createProject()} />
-          <input style={s.input} placeholder="Short description (optional)" value={newDesc} onChange={e => setNewDesc(e.target.value)} />
-          <button style={s.btn} onClick={createProject} disabled={creating}>{creating ? 'Creating...' : '+ Create project'}</button>
-        </div>
-        <div style={s.sectionLabel}>All projects — {projects.length}</div>
-        {projects.length === 0 && <div style={{ color: '#888', fontSize: '14px', padding: '20px 0' }}>No projects yet.</div>}
-        <div style={s.grid}>
-          {projects.map(p => (
-            <div key={p.id} style={s.projectCard} onClick={() => openProject(p)}>
-              <div style={s.projectName}>{p.name}</div>
-              {p.description && <div style={s.projectDesc}>{p.description}</div>}
-              <div style={s.projectFooter}>
-                <div style={s.projectMeta}>{new Date(p.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
-                <div style={s.projectArrow}>Open →</div>
+        <div style={s.container}>
+          <div style={s.homeToggle}>
+            <button style={homeTab === 'dashboard' ? s.homeToggleActive : s.homeToggleBtn} onClick={() => { setHomeTab('dashboard'); fetchStats() }}>Dashboard</button>
+            <button style={homeTab === 'projects' ? s.homeToggleActive : s.homeToggleBtn} onClick={() => setHomeTab('projects')}>Projects</button>
+          </div>
+
+          {homeTab === 'dashboard' && (
+            <div>
+              <div style={s.pageTitle}>Dashboard</div>
+              <div style={s.pageSub}>Team-wide usage and time saved across all projects</div>
+
+              <div style={s.kpiGrid}>
+                <div style={s.kpiCard}>
+                  <div style={s.kpiTop}>
+                    <div style={{ ...s.kpiIcon, background: dark ? '#1E1B4B' : '#EDE9FE' }}>📁</div>
+                    <div style={s.kpiLabel}>Total Projects</div>
+                  </div>
+                  <div style={s.kpiValue}>{projects.length}</div>
+                </div>
+                <div style={s.kpiCard}>
+                  <div style={s.kpiTop}>
+                    <div style={{ ...s.kpiIcon, background: dark ? '#0D1F2D' : '#E0F2FE' }}>💬</div>
+                    <div style={s.kpiLabel}>Questions Asked</div>
+                  </div>
+                  <div style={s.kpiValue}>{totalQuestions}</div>
+                </div>
+                <div style={s.kpiCard}>
+                  <div style={s.kpiTop}>
+                    <div style={{ ...s.kpiIcon, background: dark ? '#2D2410' : '#FEF3C7' }}>⏱️</div>
+                    <div style={s.kpiLabel}>PM Time Saved</div>
+                  </div>
+                  <div style={s.kpiValue}>{formatMinutes(totalMinutesSaved)}</div>
+                  <div style={s.kpiSub}>Based on {MINUTES_PER_QUESTION} min saved per question</div>
+                </div>
+              </div>
+
+              <div style={s.sectionLabel}>By project</div>
+              <div style={s.tableCard}>
+                <div style={s.tableHeadRow}>
+                  <div>Project</div>
+                  <div>Questions Asked</div>
+                  <div>Time Saved</div>
+                </div>
+                {sortedProjects.length === 0 && (
+                  <div style={{ padding: '40px', textAlign: 'center', color: s.text3, fontSize: '14px' }}>No projects yet.</div>
+                )}
+                {sortedProjects.map(p => {
+                  const q = msgCounts[p.id] || 0
+                  return (
+                    <div key={p.id} className="mind-row" style={s.tableRow}>
+                      <div style={s.tableCellName}>{p.name}</div>
+                      <div style={s.tableCellNum}>{q}</div>
+                      <div style={s.tableCellNum}>{formatMinutes(q * MINUTES_PER_QUESTION)}</div>
+                    </div>
+                  )
+                })}
+              </div>
+              <div style={s.tableCaption}>1 question ≈ {MINUTES_PER_QUESTION} minutes of PM time saved</div>
+            </div>
+          )}
+
+          {homeTab === 'projects' && (
+            <div>
+              <div style={s.pageTitle}>Your projects</div>
+              <div style={s.pageSub}>Create a project, upload docs, share the link with your team</div>
+              <div style={s.card}>
+                <div style={s.cardTitle}>New project</div>
+                <input style={s.input} placeholder="Project name *" value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && createProject()} />
+                <input style={s.input} placeholder="Short description (optional)" value={newDesc} onChange={e => setNewDesc(e.target.value)} />
+                <button style={s.btn} onClick={createProject} disabled={creating}>{creating ? 'Creating...' : '+ Create project'}</button>
+              </div>
+              <div style={s.sectionLabel}>All projects — {projects.length}</div>
+              {projects.length === 0 && <div style={{ color: s.text2, fontSize: '14px', padding: '20px 0' }}>No projects yet.</div>}
+              <div style={s.grid}>
+                {projects.map(p => (
+                  <div key={p.id} className="mind-card" style={s.projectCard} onClick={() => openProject(p)}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                      <div style={s.projectName}>{p.name}</div>
+                      {isAdmin && <button style={s.cardDelBtn} title="Delete project" onClick={(e) => { e.stopPropagation(); deleteProject(p) }}>🗑️</button>}
+                    </div>
+                    {p.description && <div style={s.projectDesc}>{p.description}</div>}
+                    <div style={s.projectFooter}>
+                      <div style={s.projectMeta}>{new Date(p.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
+                      <div style={s.projectArrow}>Open →</div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
+          )}
+          <div style={s.footer}>Mind AI built by Mukesh for Way with ❤️</div>
         </div>
+        <Toast msg={toast} s={s} />
       </div>
-      <Toast msg={toast} s={s} />
-    </div>
-  )
+    )
+  }
 
+  // ----- PROJECT DETAIL -----
   const chatUrl = `${window.location.origin}/chat/${selectedProject.id}`
 
   return (
     <div style={s.page}>
       <div style={s.header}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button style={s.backBtn} onClick={() => setView('home')}>← Back</button>
+          <button style={s.backBtn} onClick={() => { setView('home'); fetchStats() }}>← Back</button>
           <Logo s={s} />
           <span style={{ fontSize: '14px', color: s.text2 }}>/ {selectedProject.name}</span>
         </div>
         <div style={s.headerRight}>
           <button style={s.themeBtn} onClick={toggle}>{dark ? '☀️ Light' : '🌙 Dark'}</button>
+          {isAdmin && <span style={s.adminPill}>Admin</span>}
           <span style={{ ...s.badge, ...s.pmBadge }}>PM Portal</span>
         </div>
       </div>
@@ -449,45 +647,109 @@ function PMApp() {
             </div>
           </div>
         )}
+
+        {isAdmin && (
+          <div style={s.dangerZone}>
+            <div>
+              <div style={s.dangerTitle}>Delete this project</div>
+              <div style={s.dangerSub}>Permanently removes the project, all its documents, and its chat history. This cannot be undone.</div>
+            </div>
+            <button style={s.btnDangerSolid} onClick={() => deleteProject(selectedProject)}>Delete project</button>
+          </div>
+        )}
+
+        <div style={s.footer}>Mind AI built by Mukesh for Way with ❤️</div>
       </div>
       <Toast msg={toast} s={s} />
     </div>
   )
 }
 
+// ---------------- CHAT (team-facing) ----------------
 function ChatApp() {
   const { projectId } = useParams()
   const { dark, toggle } = useTheme()
   const s = makeStyles(dark)
   const [project, setProject] = useState(null)
-  const [messages, setMessages] = useState([])
+  const [notFound, setNotFound] = useState(false)
+  const [chats, setChats] = useState([])
+  const [activeChatId, setActiveChatId] = useState(null)
   const [question, setQuestion] = useState('')
   const [loading, setLoading] = useState(false)
-  const [notFound, setNotFound] = useState(false)
   const [chatImage, setChatImage] = useState(null)
   const [chatImagePreview, setChatImagePreview] = useState(null)
+  const [isNarrow, setIsNarrow] = useState(typeof window !== 'undefined' && window.innerWidth <= 820)
+  const [sidebarOpen, setSidebarOpen] = useState(typeof window === 'undefined' ? true : window.innerWidth > 820)
   const chatEndRef = useRef(null)
   const imageInputRef = useRef(null)
 
+  const storeKey = `mind-chats-${projectId}`
+  function loadChats() {
+    try { return JSON.parse(localStorage.getItem(storeKey)) || [] } catch { return [] }
+  }
+
+  // load project
   useEffect(() => {
     async function loadProject() {
       const { data } = await supabase.from('projects').select('*').eq('id', projectId).single()
       if (data) setProject(data)
       else setNotFound(true)
     }
-    async function loadHistory() {
-      const { data } = await supabase.from('messages').select('*').eq('project_id', projectId).order('created_at', { ascending: true }).limit(20)
-      if (data && data.length > 0) {
-        const restored = []
-        data.forEach(m => { restored.push({ role: 'user', content: m.question }); restored.push({ role: 'assistant', content: m.answer }) })
-        setMessages(restored)
-      }
-    }
     loadProject()
-    loadHistory()
   }, [projectId])
 
-  useEffect(() => { if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+  // init chats from localStorage (per browser, per project)
+  useEffect(() => {
+    let existing = loadChats()
+    if (!existing.length) {
+      existing = [{ id: newId(), title: 'New chat', messages: [], createdAt: Date.now() }]
+    }
+    setChats(existing)
+    setActiveChatId(existing[0].id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId])
+
+  // persist chats
+  useEffect(() => {
+    if (chats.length) { try { localStorage.setItem(storeKey, JSON.stringify(chats)) } catch {} }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chats])
+
+  // responsive
+  useEffect(() => {
+    function onResize() { setIsNarrow(window.innerWidth <= 820) }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  const activeChat = chats.find(c => c.id === activeChatId) || chats[0] || { id: null, messages: [] }
+  const messages = activeChat.messages || []
+
+  useEffect(() => { if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' }) }, [activeChatId, chats, loading])
+
+  function newChat() {
+    const fresh = { id: newId(), title: 'New chat', messages: [], createdAt: Date.now() }
+    setChats(prev => [fresh, ...prev])
+    setActiveChatId(fresh.id)
+    if (isNarrow) setSidebarOpen(false)
+  }
+
+  function selectChat(id) {
+    setActiveChatId(id)
+    if (isNarrow) setSidebarOpen(false)
+  }
+
+  function deleteChat(id, e) {
+    e.stopPropagation()
+    const next = chats.filter(c => c.id !== id)
+    if (!next.length) {
+      const fresh = { id: newId(), title: 'New chat', messages: [], createdAt: Date.now() }
+      setChats([fresh]); setActiveChatId(fresh.id)
+    } else {
+      setChats(next)
+      if (id === activeChatId) setActiveChatId(next[0].id)
+    }
+  }
 
   function handleChatImage(e) {
     const file = e.target.files[0]
@@ -503,18 +765,30 @@ function ChatApp() {
   async function askQuestion() {
     if ((!question.trim() && !chatImage) || loading) return
     setLoading(true)
+    const chatId = activeChatId
     const userQuestion = question || 'What do you see in this image? Does it relate to the project documents?'
     setQuestion('')
     const imageToSend = chatImage
+    const imgPreview = chatImagePreview
     setChatImage(null)
     setChatImagePreview(null)
-    const newMessages = [...messages, { role: 'user', content: userQuestion, image: chatImagePreview }]
-    setMessages(newMessages)
+
+    const current = chats.find(c => c.id === chatId)
+    const baseMessages = current ? current.messages : []
+    const userMsg = { role: 'user', content: userQuestion, image: imgPreview }
+    const newMessages = [...baseMessages, userMsg]
+
+    // add the user message + auto-title the chat from the first question
+    setChats(prev => prev.map(c => c.id === chatId
+      ? { ...c, messages: newMessages, title: c.title === 'New chat' ? titleFrom(userQuestion) : c.title }
+      : c))
 
     try {
       const { data: docs } = await supabase.from('documents').select('title, content').eq('project_id', projectId)
       if (!docs || docs.length === 0) {
-        setMessages(prev => [...prev, { role: 'assistant', content: 'No documents uploaded yet. Ask your PM to upload project documents.' }])
+        setChats(prev => prev.map(c => c.id === chatId
+          ? { ...c, messages: [...newMessages, { role: 'assistant', content: 'No documents uploaded yet. Ask your PM to upload project documents.' }] }
+          : c))
         setLoading(false)
         return
       }
@@ -526,17 +800,21 @@ function ChatApp() {
         body: JSON.stringify({ question: userQuestion, context, projectName: project.name, history, image: imageToSend })
       })
       const data = await res.json()
-      const answer = data.answer
+      const answer = data.answer || 'Something went wrong. Please try again.'
       await supabase.from('messages').insert([{ project_id: projectId, question: userQuestion, answer }])
-      setMessages(prev => [...prev, { role: 'assistant', content: answer }])
+      setChats(prev => prev.map(c => c.id === chatId
+        ? { ...c, messages: [...newMessages, { role: 'assistant', content: answer }] }
+        : c))
     } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Something went wrong. Please try again.' }])
+      setChats(prev => prev.map(c => c.id === chatId
+        ? { ...c, messages: [...newMessages, { role: 'assistant', content: 'Something went wrong. Please try again.' }] }
+        : c))
     }
     setLoading(false)
   }
 
   if (notFound) return (
-    <div style={{ ...s.chatPage, alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ ...s.page, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: '32px', marginBottom: '12px' }}>🔍</div>
         <div style={{ fontSize: '18px', fontWeight: '600', color: s.text1, marginBottom: '8px' }}>Project not found</div>
@@ -546,74 +824,113 @@ function ChatApp() {
   )
 
   if (!project) return (
-    <div style={{ ...s.chatPage, alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ ...s.page, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
       <div style={{ color: s.text2, fontSize: '14px' }}>Loading...</div>
     </div>
   )
 
+  // sidebar styling (responsive)
+  const sidebarStyle = isNarrow
+    ? { ...s.chatSidebar, position: 'fixed', top: 0, left: 0, height: '100vh', zIndex: 60, transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)', transition: 'transform 0.25s ease', boxShadow: sidebarOpen ? '0 0 40px rgba(0,0,0,0.45)' : 'none' }
+    : { ...s.chatSidebar, width: sidebarOpen ? '280px' : '0px', borderRight: sidebarOpen ? s.chatSidebar.borderRight : 'none', overflow: 'hidden', transition: 'width 0.2s ease' }
+
   return (
-    <div style={s.chatPage}>
-      <div style={s.chatHeader}>
-        <div style={s.logoIcon}>🧠</div>
-        <div style={s.chatHeaderInfo}>
-          <div style={s.chatProjectName}>{project.name}</div>
-          <div style={s.chatProjectSub}>Powered by Mind · Answers based on project documents only</div>
+    <div style={s.chatLayout}>
+      {isNarrow && sidebarOpen && (
+        <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 55 }} />
+      )}
+
+      <div style={sidebarStyle}>
+        <div style={s.sidebarHeader}>
+          <Logo s={s} />
+          {isNarrow && <button style={s.iconBtn} onClick={() => setSidebarOpen(false)}>×</button>}
         </div>
-        <button style={s.themeBtn} onClick={toggle}>{dark ? '☀️' : '🌙'}</button>
-      </div>
-      <div style={s.chatBody}>
-        <div style={s.chatBox}>
-          {messages.length === 0 && (
-            <div style={s.emptyChat}>
-              <div style={s.emptyChatIcon}>🧠</div>
-              <div style={s.emptyChatTitle}>Ask anything about {project.name}</div>
-              <div style={s.emptyChatSub}>I'll answer strictly from the uploaded project documents</div>
+        <div style={{ padding: '12px' }}>
+          <button style={s.newChatBtn} onClick={newChat}>+ New chat</button>
+        </div>
+        <div style={s.chatList}>
+          {chats.map(c => (
+            <div
+              key={c.id}
+              className="mind-chat-item"
+              style={c.id === activeChatId ? { ...s.chatListItem, ...s.chatListItemActive } : s.chatListItem}
+              onClick={() => selectChat(c.id)}
+            >
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{c.title || 'New chat'}</span>
+              <button style={s.chatDelBtn} onClick={(e) => deleteChat(c.id, e)} title="Delete chat">×</button>
             </div>
-          )}
-          {messages.map((m, i) => (
-            m.role === 'user'
-              ? <div key={i} style={s.userMsg}>
-                  <div style={s.userBubble}>
-                    {m.image && <img src={m.image} alt="attached" style={{ maxWidth: '200px', borderRadius: '8px', marginBottom: '8px', display: 'block' }} />}
-                    {m.content}
-                  </div>
-                </div>
-              : <div key={i} style={s.aiMsgRow}>
-                  <div style={s.aiAvatar}>🧠</div>
-                  <div style={s.aiBubble}>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
-                  </div>
-                </div>
           ))}
-          {loading && (
-            <div style={s.aiMsgRow}>
-              <div style={s.aiAvatar}>🧠</div>
-              <div style={{ ...s.aiBubble, color: s.text2 }}>Searching documents...</div>
-            </div>
-          )}
-          <div ref={chatEndRef} />
         </div>
+        <div style={s.sidebarFooter}>{project.name}</div>
+      </div>
 
-        {chatImagePreview && (
-          <div style={s.imagePreviewWrap}>
-            <img src={chatImagePreview} alt="attached" style={s.imagePreview} />
-            <button style={s.imageRemoveBtn} onClick={() => { setChatImage(null); setChatImagePreview(null) }}>×</button>
+      <div style={s.chatMain}>
+        <div style={s.chatMainHeader}>
+          <button style={s.iconBtn} onClick={() => setSidebarOpen(o => !o)} title="Toggle chats">☰</button>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={s.chatProjectName}>{project.name}</div>
+            <div style={s.chatProjectSub}>Answers based on project documents only</div>
           </div>
-        )}
-
-        <div style={s.inputWrap}>
-          <input
-            style={s.chatInput}
-            placeholder="Ask anything about this project..."
-            value={question}
-            onChange={e => setQuestion(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && askQuestion()}
-          />
-          <button style={s.attachBtn} onClick={() => imageInputRef.current.click()} title="Attach screenshot">📎</button>
-          <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleChatImage} />
-          <button style={s.sendBtn} onClick={askQuestion} disabled={loading}>{loading ? '...' : 'Ask →'}</button>
+          <button style={s.themeBtn} onClick={toggle}>{dark ? '☀️' : '🌙'}</button>
         </div>
-        <div style={s.poweredBy}>Mind by Way.com</div>
+
+        <div style={s.chatScroll}>
+          <div style={s.chatInner}>
+            {messages.length === 0 && !loading && (
+              <div style={s.emptyChat}>
+                <div style={s.emptyChatIcon}>🧠</div>
+                <div style={s.emptyChatTitle}>Ask anything about {project.name}</div>
+                <div style={s.emptyChatSub}>I'll answer strictly from the uploaded project documents. You can also attach a screenshot.</div>
+              </div>
+            )}
+            {messages.map((m, i) => (
+              m.role === 'user'
+                ? <div key={i} style={s.userMsg}>
+                    <div style={s.userBubble}>
+                      {m.image && <img src={m.image} alt="attached" style={{ maxWidth: '200px', borderRadius: '8px', marginBottom: '8px', display: 'block' }} />}
+                      {m.content}
+                    </div>
+                  </div>
+                : <div key={i} style={s.aiMsgRow}>
+                    <div style={s.aiAvatar}>🧠</div>
+                    <div style={s.aiBubble}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                    </div>
+                  </div>
+            ))}
+            {loading && (
+              <div style={s.aiMsgRow}>
+                <div style={s.aiAvatar}>🧠</div>
+                <div style={{ ...s.aiBubble, color: s.text2 }}>Searching documents...</div>
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+        </div>
+
+        <div style={s.chatInputBar}>
+          <div style={s.chatInner}>
+            {chatImagePreview && (
+              <div style={s.imagePreviewWrap}>
+                <img src={chatImagePreview} alt="attached" style={s.imagePreview} />
+                <button style={s.imageRemoveBtn} onClick={() => { setChatImage(null); setChatImagePreview(null) }}>×</button>
+              </div>
+            )}
+            <div style={s.inputWrap}>
+              <input
+                style={s.chatInput}
+                placeholder="Ask anything about this project..."
+                value={question}
+                onChange={e => setQuestion(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && askQuestion()}
+              />
+              <button style={s.attachBtn} onClick={() => imageInputRef.current.click()} title="Attach screenshot">📎</button>
+              <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleChatImage} />
+              <button style={s.sendBtn} onClick={askQuestion} disabled={loading}>{loading ? '...' : 'Ask →'}</button>
+            </div>
+            <div style={s.poweredBy}>Mind AI built by Mukesh for Way with ❤️</div>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -622,6 +939,7 @@ function ChatApp() {
 export default function App() {
   return (
     <BrowserRouter>
+      <GlobalStyles />
       <Routes>
         <Route path="/" element={<PMApp />} />
         <Route path="/chat/:projectId" element={<ChatApp />} />
