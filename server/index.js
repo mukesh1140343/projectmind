@@ -8,11 +8,50 @@ require('dotenv').config({ path: '../.env' })
 const app = express()
 const upload = multer({ dest: 'uploads/' })
 app.use(cors({
-  origin: ['http://localhost:3000', /\.vercel\.app$/, /\.onrender\.com$/]
+  origin: [/^http:\/\/localhost:\d+$/, /\.vercel\.app$/, /\.onrender\.com$/]
 }))
 app.use(express.json({ limit: '50mb' }))
 
 const anthropic = new Anthropic({ apiKey: process.env.REACT_APP_CLAUDE_KEY })
+
+// ---- Atlassian (Jira + Confluence) config ----
+const ATLASSIAN_BASE_URL = process.env.ATLASSIAN_BASE_URL   // e.g. https://yourcompany.atlassian.net
+const ATLASSIAN_EMAIL = process.env.ATLASSIAN_EMAIL         // your Atlassian login email
+const ATLASSIAN_API_TOKEN = process.env.ATLASSIAN_API_TOKEN // token from id.atlassian.com/manage-profile/security/api-tokens
+
+function atlassianConfigured() {
+  return Boolean(ATLASSIAN_BASE_URL && ATLASSIAN_EMAIL && ATLASSIAN_API_TOKEN)
+}
+function atlassianHeaders() {
+  const token = Buffer.from(`${ATLASSIAN_EMAIL}:${ATLASSIAN_API_TOKEN}`).toString('base64')
+  return { Authorization: `Basic ${token}`, Accept: 'application/json' }
+}
+// Atlassian Document Format (Jira descriptions/comments) -> plain text
+function adfToText(node) {
+  if (!node) return ''
+  if (Array.isArray(node)) return node.map(adfToText).join('')
+  let out = ''
+  if (node.type === 'text') out += node.text || ''
+  if (node.type === 'hardBreak') out += '\n'
+  if (node.content) out += adfToText(node.content)
+  if (['paragraph', 'heading', 'listItem', 'blockquote', 'tableRow'].includes(node.type)) out += '\n'
+  return out
+}
+// Confluence storage HTML -> plain text
+function htmlToText(html) {
+  return (html || '')
+    .replace(/<\/(p|div|h[1-6]|li|tr)>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
 
 const SYSTEM_PROMPT = `You are an AI Product Assistant designed to help Designers, Engineers, and QA understand a specific project using provided documents and transcripts.
 
@@ -146,6 +185,71 @@ app.post('/extract-figma', async (req, res) => {
   } catch (error) {
     console.error('Figma error:', error.message)
     res.status(500).json({ error: error.message })
+  }
+})
+
+app.post('/extract-confluence', async (req, res) => {
+  const { url } = req.body
+  if (!atlassianConfigured()) {
+    return res.status(400).json({ error: 'Atlassian is not set up on the server yet. Add ATLASSIAN_BASE_URL, ATLASSIAN_EMAIL and ATLASSIAN_API_TOKEN.' })
+  }
+  try {
+    // Pull the page ID from a Confluence Cloud URL: /wiki/spaces/SPACE/pages/123456789/Title
+    let pageId = null
+    const m = (url || '').match(/\/pages\/(\d+)/)
+    if (m) pageId = m[1]
+    else if (/^\d+$/.test((url || '').trim())) pageId = url.trim()
+    if (!pageId) return res.status(400).json({ error: 'Could not find a page ID in that link. Paste the full Confluence page URL — it contains /pages/<number>/.' })
+
+    const api = `${ATLASSIAN_BASE_URL.replace(/\/$/, '')}/wiki/rest/api/content/${pageId}?expand=body.storage`
+    const r = await fetch(api, { headers: atlassianHeaders() })
+    if (r.status === 401 || r.status === 403) return res.status(400).json({ error: 'Atlassian rejected the credentials. Check the email, API token, and that you can view this page.' })
+    if (r.status === 404) return res.status(400).json({ error: 'Page not found. Check the link or that your token has access to that space.' })
+    if (!r.ok) return res.status(400).json({ error: `Confluence returned an error (${r.status}).` })
+    const data = await r.json()
+    const title = data.title || `Confluence ${pageId}`
+    const html = data.body && data.body.storage ? data.body.storage.value : ''
+    const text = htmlToText(html)
+    if (!text) return res.json({ text: '', warning: 'That page has no readable text content.' })
+    res.json({ title: `Confluence: ${title}`, text: `Confluence Page: ${title}\n\n${text}` })
+  } catch (e) {
+    console.error('Confluence error:', e)
+    res.status(500).json({ error: e.message || 'Failed to fetch Confluence page' })
+  }
+})
+
+app.post('/extract-jira', async (req, res) => {
+  let { key } = req.body
+  if (!atlassianConfigured()) {
+    return res.status(400).json({ error: 'Atlassian is not set up on the server yet. Add ATLASSIAN_BASE_URL, ATLASSIAN_EMAIL and ATLASSIAN_API_TOKEN.' })
+  }
+  try {
+    key = (key || '').trim()
+    const match = key.match(/([A-Za-z][A-Za-z0-9]+-\d+)/)  // accepts a raw key or a full Jira URL
+    if (match) key = match[1].toUpperCase()
+    if (!/^[A-Z][A-Z0-9]+-\d+$/.test(key)) return res.status(400).json({ error: 'That does not look like a Jira ID. Use something like WAY-123.' })
+
+    const api = `${ATLASSIAN_BASE_URL.replace(/\/$/, '')}/rest/api/3/issue/${key}?fields=summary,description,comment,status,issuetype`
+    const r = await fetch(api, { headers: atlassianHeaders() })
+    if (r.status === 401 || r.status === 403) return res.status(400).json({ error: 'Atlassian rejected the credentials. Check the email, API token, and that you can view this issue.' })
+    if (r.status === 404) return res.status(400).json({ error: `Issue ${key} not found (or your token has no access).` })
+    if (!r.ok) return res.status(400).json({ error: `Jira returned an error (${r.status}).` })
+    const data = await r.json()
+    const f = data.fields || {}
+    const summary = f.summary || ''
+    const desc = adfToText(f.description).replace(/\n{3,}/g, '\n\n').trim()
+    const comments = (f.comment && f.comment.comments ? f.comment.comments : [])
+      .map(c => `- ${(c.author && c.author.displayName) || 'User'}: ${adfToText(c.body).trim()}`)
+      .join('\n')
+    let out = `Jira Ticket ${key}: ${summary}\n`
+    if (f.issuetype && f.issuetype.name) out += `Type: ${f.issuetype.name}\n`
+    if (f.status && f.status.name) out += `Status: ${f.status.name}\n`
+    out += `\nDescription:\n${desc || '(no description)'}\n`
+    if (comments) out += `\nComments:\n${comments}\n`
+    res.json({ title: `Jira: ${key} - ${summary}`.slice(0, 120), text: out })
+  } catch (e) {
+    console.error('Jira error:', e)
+    res.status(500).json({ error: e.message || 'Failed to fetch Jira issue' })
   }
 })
 
