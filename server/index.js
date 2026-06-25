@@ -78,7 +78,7 @@ RESPONSE FORMAT:
 - Write naturally as a helpful assistant would`
 
 app.post('/ask', async (req, res) => {
-  const { question, context, projectName, history, image } = req.body
+  const { question, context, projectName, history, image, team } = req.body
   try {
     const historyMessages = (history || []).map(m => ({ role: m.role, content: m.content }))
 
@@ -92,7 +92,7 @@ app.post('/ask', async (req, res) => {
     const message = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
-      system: `${SYSTEM_PROMPT}\n\nPROJECT: ${projectName}\n\nDOCUMENTS:\n${context}`,
+      system: `${SYSTEM_PROMPT}\n\nPROJECT: ${projectName}${team ? `\nThe person asking is from the ${team} team — keep their perspective in mind, but still answer only from the documents.` : ''}\n\nDOCUMENTS:\n${context}`,
       messages: [
         ...historyMessages,
         { role: 'user', content: userContent }

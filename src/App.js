@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { BrowserRouter, Routes, Route, useParams } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useParams, useNavigate } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { supabase } from './supabase'
@@ -8,6 +8,7 @@ const SERVER = process.env.REACT_APP_SERVER_URL || 'http://localhost:3001'
 const ACCESS_PIN = process.env.REACT_APP_ACCESS_PIN || 'MIND01'
 const ADMIN_PIN = process.env.REACT_APP_ADMIN_PIN || 'WAY999'
 const MINUTES_PER_QUESTION = 5
+const TEAMS = ['Design', 'Engineering', 'QA']
 
 // ---------- helpers ----------
 function newId() {
@@ -136,6 +137,11 @@ function makeStyles(dark) {
     iconBtn: { background: bg3, border: `1px solid ${border}`, color: text2, fontSize: '16px', cursor: 'pointer', width: '34px', height: '34px', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     chatMain: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh' },
     chatMainHeader: { padding: '12px 18px', borderBottom: `1px solid ${border}`, display: 'flex', alignItems: 'center', gap: '12px', background: bg2 },
+    headerSelect: { fontSize: '15px', fontWeight: '700', color: text1, background: bg3, border: `1px solid ${border}`, outline: 'none', cursor: 'pointer', maxWidth: '280px', padding: '7px 10px', borderRadius: '10px' },
+    teamBar: { display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 18px', borderBottom: `1px solid ${border}`, background: bg2, flexWrap: 'wrap' },
+    teamLabel: { fontSize: '12px', color: text3, fontWeight: '600', marginRight: '4px' },
+    teamTab: { padding: '6px 16px', borderRadius: '20px', border: `1px solid ${border2}`, background: 'transparent', color: text2, fontSize: '13px', cursor: 'pointer', fontWeight: '500' },
+    teamTabActive: { padding: '6px 16px', borderRadius: '20px', border: '1px solid transparent', background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', color: '#fff', fontSize: '13px', cursor: 'pointer', fontWeight: '600' },
     chatProjectName: { fontSize: '15px', fontWeight: '700', color: text1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
     chatProjectSub: { fontSize: '12px', color: text3, marginTop: '1px' },
     chatScroll: { flex: 1, overflowY: 'auto', padding: '24px 20px', minHeight: 0 },
@@ -717,14 +723,18 @@ function PMApp() {
 // ---------------- CHAT (team-facing) ----------------
 function ChatApp() {
   const { projectId } = useParams()
+  const navigate = useNavigate()
   const { dark, toggle } = useTheme()
   const s = makeStyles(dark)
   const [project, setProject] = useState(null)
+  const [allProjects, setAllProjects] = useState([])
   const [notFound, setNotFound] = useState(false)
   const HISTORY_ID = '__history__'
   const [localChats, setLocalChats] = useState([])
   const [historyMsgs, setHistoryMsgs] = useState([])
   const [activeChatId, setActiveChatId] = useState(HISTORY_ID)
+  const [team, setTeamState] = useState(() => localStorage.getItem('mind-team') || 'Design')
+  function setTeam(t) { setTeamState(t); try { localStorage.setItem('mind-team', t) } catch {} }
   const [question, setQuestion] = useState('')
   const [loading, setLoading] = useState(false)
   const [chatImage, setChatImage] = useState(null)
@@ -749,10 +759,25 @@ function ChatApp() {
     loadProject()
   }, [projectId])
 
-  // load the shared conversation history from the database (same for everyone, on any device)
+  // load all projects for the project switcher
+  useEffect(() => {
+    async function loadAll() {
+      const { data } = await supabase.from('projects').select('id, name').order('created_at', { ascending: false })
+      if (data) setAllProjects(data)
+    }
+    loadAll()
+  }, [])
+
+  // load the shared conversation history for this project + team (same for everyone, on any device)
   useEffect(() => {
     async function loadHistory() {
-      const { data } = await supabase.from('messages').select('question, answer, created_at').eq('project_id', projectId).order('created_at', { ascending: true }).limit(100)
+      const { data } = await supabase
+        .from('messages')
+        .select('question, answer, created_at, team')
+        .eq('project_id', projectId)
+        .or(`team.eq.${team},team.is.null`)   // selected team + older untagged questions
+        .order('created_at', { ascending: true })
+        .limit(100)
       const msgs = []
       ;(data || []).forEach(r => {
         msgs.push({ role: 'user', content: r.question })
@@ -764,7 +789,7 @@ function ChatApp() {
     setLocalChats(loadLocalChats())
     setActiveChatId(HISTORY_ID)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId])
+  }, [projectId, team])
 
   // persist only the local "new chat" sessions (the history lives in the database)
   useEffect(() => {
@@ -863,11 +888,11 @@ function ChatApp() {
       const res = await fetch(`${SERVER}/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: userQuestion, context, projectName: project.name, history, image: imageToSend })
+        body: JSON.stringify({ question: userQuestion, context, projectName: project.name, history, image: imageToSend, team })
       })
       const data = await res.json()
       const answer = data.answer || 'Something went wrong. Please try again.'
-      await supabase.from('messages').insert([{ project_id: projectId, question: userQuestion, answer }])
+      await supabase.from('messages').insert([{ project_id: projectId, question: userQuestion, answer, team }])
       appendAnswer(answer)
     } catch {
       appendAnswer('Something went wrong. Please try again.')
@@ -932,10 +957,21 @@ function ChatApp() {
         <div style={s.chatMainHeader}>
           <button style={s.iconBtn} onClick={() => setSidebarOpen(o => !o)} title="Toggle chats">☰</button>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={s.chatProjectName}>{project.name}</div>
+            <select style={s.headerSelect} value={projectId} onChange={e => navigate(`/chat/${e.target.value}`)} title="Switch project">
+              {(allProjects.length ? allProjects : [project]).map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
             <div style={s.chatProjectSub}>Answers based on project documents only</div>
           </div>
           <button style={s.themeBtn} onClick={toggle}>{dark ? '☀️' : '🌙'}</button>
+        </div>
+
+        <div style={s.teamBar}>
+          <span style={s.teamLabel}>Team</span>
+          {TEAMS.map(t => (
+            <button key={t} style={t === team ? s.teamTabActive : s.teamTab} onClick={() => setTeam(t)}>{t}</button>
+          ))}
         </div>
 
         <div style={s.chatScroll}>
