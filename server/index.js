@@ -2,23 +2,19 @@ const express = require('express')
 const cors = require('cors')
 const multer = require('multer')
 const fs = require('fs')
-const Anthropic = require('@anthropic-ai/sdk')
+const Groq = require('groq-sdk')
 require('dotenv').config({ path: '../.env' })
-
 const app = express()
 const upload = multer({ dest: 'uploads/' })
 app.use(cors({
   origin: [/^http:\/\/localhost:\d+$/, /\.vercel\.app$/, /\.onrender\.com$/]
 }))
 app.use(express.json({ limit: '50mb' }))
-
-const anthropic = new Anthropic({ apiKey: process.env.REACT_APP_CLAUDE_KEY })
-
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 // ---- Atlassian (Jira + Confluence) config ----
 const ATLASSIAN_BASE_URL = process.env.ATLASSIAN_BASE_URL   // e.g. https://yourcompany.atlassian.net
 const ATLASSIAN_EMAIL = process.env.ATLASSIAN_EMAIL         // your Atlassian login email
 const ATLASSIAN_API_TOKEN = process.env.ATLASSIAN_API_TOKEN // token from id.atlassian.com/manage-profile/security/api-tokens
-
 function atlassianConfigured() {
   return Boolean(ATLASSIAN_BASE_URL && ATLASSIAN_EMAIL && ATLASSIAN_API_TOKEN)
 }
@@ -26,7 +22,6 @@ function atlassianHeaders() {
   const token = Buffer.from(`${ATLASSIAN_EMAIL}:${ATLASSIAN_API_TOKEN}`).toString('base64')
   return { Authorization: `Basic ${token}`, Accept: 'application/json' }
 }
-// Atlassian Document Format (Jira descriptions/comments) -> plain text
 function adfToText(node) {
   if (!node) return ''
   if (Array.isArray(node)) return node.map(adfToText).join('')
@@ -37,7 +32,6 @@ function adfToText(node) {
   if (['paragraph', 'heading', 'listItem', 'blockquote', 'tableRow'].includes(node.type)) out += '\n'
   return out
 }
-// Confluence storage HTML -> plain text
 function htmlToText(html) {
   return (html || '')
     .replace(/<\/(p|div|h[1-6]|li|tr)>/gi, '\n')
@@ -52,15 +46,12 @@ function htmlToText(html) {
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
-
 const SYSTEM_PROMPT = `You are an AI Product Assistant designed to help Designers, Engineers, and QA understand a specific project using provided documents and transcripts.
-
 INTENT CLASSIFICATION (internal only, never show this to user):
 - If the message is small talk or greetings: respond warmly but redirect to project help
 - If out of scope: politely say you can only help with this project
 - If vague: ask a clarifying question
 - If project related: answer from documents
-
 STRICT RULES:
 1. Answer ONLY from provided documents. Never guess or assume.
 2. If not found, say: "This is not specified in the current project documents."
@@ -69,50 +60,43 @@ STRICT RULES:
 5. Keep answers clear, concise, and structured.
 6. Use bullet points for flows and requirements.
 7. Stay strictly within the current project scope.
-
 RESPONSE FORMAT:
 - Start with a direct answer
 - Add supporting details as bullet points if needed
 - Keep it concise — no fluff, no long paragraphs
 - Do NOT include "Intent Check:", "Source:", or "Answer:" labels in your response
 - Write naturally as a helpful assistant would`
-
 app.post('/ask', async (req, res) => {
   const { question, context, projectName, history, image, team } = req.body
   try {
     const historyMessages = (history || []).map(m => ({ role: m.role, content: m.content }))
-
+    const systemMessage = {
+      role: 'system',
+      content: `${SYSTEM_PROMPT}\n\nPROJECT: ${projectName}${team ? `\nThe person asking is from the ${team} team — keep their perspective in mind, but still answer only from the documents.` : ''}\n\nDOCUMENTS:\n${context}`
+    }
     const userContent = image
       ? [
-          { type: 'image', source: { type: 'base64', media_type: image.type, data: image.base64 } },
-          { type: 'text', text: question }
+          { type: 'text', text: question },
+          { type: 'image_url', image_url: { url: `data:${image.type};base64,${image.base64}` } }
         ]
       : question
-
-    const message = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      system: `${SYSTEM_PROMPT}\n\nPROJECT: ${projectName}${team ? `\nThe person asking is from the ${team} team — keep their perspective in mind, but still answer only from the documents.` : ''}\n\nDOCUMENTS:\n${context}`,
+    const model = image ? 'qwen/qwen3.6-27b' : 'openai/gpt-oss-120b'
+    const completion = await groq.chat.completions.create({
+      model,
+      max_completion_tokens: 1024,
       messages: [
+        systemMessage,
         ...historyMessages,
         { role: 'user', content: userContent }
       ]
     })
-    // Find the text block defensively (don't assume content[0] is text)
-    const textBlock = message.content.find(b => b.type === 'text')
-    res.json({ answer: textBlock ? textBlock.text : 'No response generated.' })
+    const answer = completion.choices[0] && completion.choices[0].message && completion.choices[0].message.content
+    res.json({ answer: answer || 'No response generated.' })
   } catch (error) {
     console.error(error)
     res.status(500).json({ error: 'Something went wrong' })
   }
 })
-
-// ---- PDF EXTRACTION (FIXED) ----
-// The common reason PDF upload "silently" fails is that requiring the package
-// root ("pdf-parse") runs its built-in debug/test harness, which tries to open a
-// sample file that doesn't exist in production and throws ENOENT. Importing the
-// library file directly avoids that entirely. Also make sure version 1.1.1 is
-// installed:  cd server && npm install pdf-parse@1.1.1
 app.post('/extract-pdf', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file received by server' })
   const filePath = req.file.path
@@ -135,33 +119,31 @@ app.post('/extract-pdf', upload.single('file'), async (req, res) => {
     res.status(500).json({ error: error.message || 'Failed to read PDF' })
   }
 })
-
 app.post('/extract-image', upload.single('file'), async (req, res) => {
   try {
     const imageData = fs.readFileSync(req.file.path)
     const base64Image = imageData.toString('base64')
     const mimeType = req.file.mimetype
-    const message = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
+    const completion = await groq.chat.completions.create({
+      model: 'qwen/qwen3.6-27b',
+      max_completion_tokens: 2048,
       messages: [{
         role: 'user',
         content: [
-          { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64Image } },
-          { type: 'text', text: 'Extract all text content from this image. Include everything visible — headings, body text, labels, captions, table contents. Format it cleanly.' }
+          { type: 'text', text: 'Extract all text content from this image. Include everything visible — headings, body text, labels, captions, table contents. Format it cleanly.' },
+          { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}` } }
         ]
       }]
     })
     fs.unlinkSync(req.file.path)
-    const textBlock = message.content.find(b => b.type === 'text')
-    res.json({ text: textBlock ? textBlock.text : '' })
+    const text = completion.choices[0] && completion.choices[0].message && completion.choices[0].message.content
+    res.json({ text: text || '' })
   } catch (error) {
     console.error('Image error:', error.message)
     if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path)
     res.status(500).json({ error: error.message })
   }
 })
-
 app.post('/extract-figma', async (req, res) => {
   const { url } = req.body
   try {
@@ -187,20 +169,17 @@ app.post('/extract-figma', async (req, res) => {
     res.status(500).json({ error: error.message })
   }
 })
-
 app.post('/extract-confluence', async (req, res) => {
   const { url } = req.body
   if (!atlassianConfigured()) {
     return res.status(400).json({ error: 'Atlassian is not set up on the server yet. Add ATLASSIAN_BASE_URL, ATLASSIAN_EMAIL and ATLASSIAN_API_TOKEN.' })
   }
   try {
-    // Pull the page ID from a Confluence Cloud URL: /wiki/spaces/SPACE/pages/123456789/Title
     let pageId = null
     const m = (url || '').match(/\/pages\/(\d+)/)
     if (m) pageId = m[1]
     else if (/^\d+$/.test((url || '').trim())) pageId = url.trim()
     if (!pageId) return res.status(400).json({ error: 'Could not find a page ID in that link. Paste the full Confluence page URL — it contains /pages/<number>/.' })
-
     const api = `${ATLASSIAN_BASE_URL.replace(/\/$/, '')}/wiki/rest/api/content/${pageId}?expand=body.storage`
     const r = await fetch(api, { headers: atlassianHeaders() })
     if (r.status === 401 || r.status === 403) return res.status(400).json({ error: 'Atlassian rejected the credentials. Check the email, API token, and that you can view this page.' })
@@ -217,7 +196,6 @@ app.post('/extract-confluence', async (req, res) => {
     res.status(500).json({ error: e.message || 'Failed to fetch Confluence page' })
   }
 })
-
 app.post('/extract-jira', async (req, res) => {
   let { key } = req.body
   if (!atlassianConfigured()) {
@@ -225,10 +203,9 @@ app.post('/extract-jira', async (req, res) => {
   }
   try {
     key = (key || '').trim()
-    const match = key.match(/([A-Za-z][A-Za-z0-9]+-\d+)/)  // accepts a raw key or a full Jira URL
+    const match = key.match(/([A-Za-z][A-Za-z0-9]+-\d+)/)
     if (match) key = match[1].toUpperCase()
     if (!/^[A-Z][A-Z0-9]+-\d+$/.test(key)) return res.status(400).json({ error: 'That does not look like a Jira ID. Use something like WAY-123.' })
-
     const api = `${ATLASSIAN_BASE_URL.replace(/\/$/, '')}/rest/api/3/issue/${key}?fields=summary,description,comment,status,issuetype`
     const r = await fetch(api, { headers: atlassianHeaders() })
     if (r.status === 401 || r.status === 403) return res.status(400).json({ error: 'Atlassian rejected the credentials. Check the email, API token, and that you can view this issue.' })
@@ -252,9 +229,6 @@ app.post('/extract-jira', async (req, res) => {
     res.status(500).json({ error: e.message || 'Failed to fetch Jira issue' })
   }
 })
-
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads')
-
-// Use the port the host (e.g. Render) provides, fall back to 3001 locally
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
