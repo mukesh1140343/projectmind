@@ -43,143 +43,156 @@ function useTheme() {
   return { dark, toggle }
 }
 
+// ---------- design tokens + style dictionary ----------
 function makeStyles(dark) {
-  const bg = dark ? '#0F0F0F' : '#F5F5F7'
-  const bg2 = dark ? '#161616' : '#FFFFFF'
-  const bg3 = dark ? '#1A1A1A' : '#F0F0F2'
-  const border = dark ? '#1E1E1E' : '#E5E5EA'
-  const border2 = dark ? '#2A2A2A' : '#D8D8DC'
-  const text1 = dark ? '#FFFFFF' : '#111111'
-  const text2 = dark ? '#888888' : '#666666'
-  const text3 = dark ? '#444444' : '#AAAAAA'
-  const inputBg = dark ? '#1A1A1A' : '#FFFFFF'
-  const tabBg = dark ? '#161616' : '#EBEBED'
-  const tabActiveBg = dark ? '#252525' : '#FFFFFF'
-  const shadow = dark ? '0 1px 2px rgba(0,0,0,0.5)' : '0 1px 3px rgba(16,24,40,0.06), 0 1px 2px rgba(16,24,40,0.04)'
-  const shadowLg = dark ? '0 12px 40px rgba(0,0,0,0.55)' : '0 12px 40px rgba(16,24,40,0.10)'
+  const FONT = "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+
+  const bg = dark ? '#17161D' : '#FAFAF8'
+  const bg2 = dark ? '#1D1C24' : '#FFFFFF'
+  const bg3 = dark ? '#24232C' : '#F5F4F1'
+  const border = dark ? '#302E39' : '#E7E5E1'
+  const border2 = dark ? '#3A3844' : '#D9D7D2'
+  const text1 = dark ? '#F3F2F5' : '#1C1B24'
+  const text2 = dark ? '#A6A4AD' : '#6B6975'
+  const text3 = dark ? '#716F7A' : '#9C9AA3'
+  const accent = dark ? '#8C7DF3' : '#6D5AE0'
+  const accentHover = dark ? '#9D90F5' : '#5C49CB'
+  const accentTint = dark ? '#332C56' : '#EEEAFB'
+  const accentContrast = '#FFFFFF'
+  const inputBg = dark ? '#1A1922' : '#FFFFFF'
+  const tabBg = dark ? '#1A1922' : '#EFEEEA'
+  const tabActiveBg = dark ? '#2C2A36' : '#FFFFFF'
+  const shadow = dark ? '0 1px 2px rgba(0,0,0,0.35)' : '0 1px 2px rgba(32,28,55,0.05), 0 1px 3px rgba(32,28,55,0.04)'
+  const shadowLg = dark ? '0 16px 40px rgba(0,0,0,0.5)' : '0 12px 32px rgba(32,28,55,0.10)'
+  const gradient = `linear-gradient(150deg, ${accent} 0%, ${dark ? '#5B4CC4' : '#4F3DC0'} 100%)`
+  const danger = dark ? '#F87171' : '#DC2626'
+
   return {
-    page: { minHeight: '100vh', background: bg, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' },
-    header: { background: bg2, borderBottom: `1px solid ${border}`, padding: '14px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10 },
+    FONT, accent, accentHover, accentTint, gradient,
+    page: { minHeight: '100vh', background: bg, fontFamily: FONT },
+    header: { background: bg2, borderBottom: `1px solid ${border}`, padding: '0 28px', height: '64px', display: 'flex', alignItems: 'center', gap: '10px', position: 'sticky', top: 0, zIndex: 10 },
+    spacer: { flex: 1 },
     logoWrap: { display: 'flex', alignItems: 'center', gap: '10px' },
-    logoIcon: { width: '32px', height: '32px', background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' },
-    logoText: { fontSize: '18px', fontWeight: '700', color: text1, letterSpacing: '-0.3px' },
+    logoIcon: { width: '32px', height: '32px', background: gradient, borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#fff' },
+    logoText: { fontSize: '16.5px', fontWeight: '800', color: text1, letterSpacing: '-0.02em' },
     headerRight: { display: 'flex', alignItems: 'center', gap: '10px' },
-    badge: { fontSize: '11px', fontWeight: '600', padding: '3px 10px', borderRadius: '20px' },
-    pmBadge: { background: dark ? '#1E1B4B' : '#EDE9FE', color: dark ? '#818CF8' : '#5B21B6' },
-    themeBtn: { background: bg3, border: `1px solid ${border}`, color: text2, fontSize: '13px', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer' },
-    container: { maxWidth: '920px', margin: '0 auto', padding: '32px 24px' },
-    card: { background: bg2, borderRadius: '18px', padding: '24px', marginBottom: '16px', border: `1px solid ${border}`, boxShadow: shadow },
-    cardTitle: { fontSize: '14px', fontWeight: '600', color: text1, marginBottom: '16px' },
-    input: { width: '100%', padding: '12px 14px', borderRadius: '12px', border: `1px solid ${border2}`, marginBottom: '10px', fontSize: '14px', boxSizing: 'border-box', outline: 'none', background: inputBg, color: text1 },
-    textarea: { width: '100%', padding: '11px 14px', borderRadius: '10px', border: `1px solid ${border2}`, marginBottom: '10px', fontSize: '14px', height: '160px', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit', background: inputBg, color: text1 },
-    btn: { background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', color: '#fff', border: 'none', padding: '12px 22px', borderRadius: '12px', fontSize: '14px', cursor: 'pointer', fontWeight: '600', boxShadow: '0 4px 14px rgba(99,102,241,0.30)' },
-    btnSm: { background: '#6366F1', color: '#fff', border: 'none', padding: '7px 14px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' },
-    btnDanger: { background: 'transparent', color: '#F87171', border: '1px solid #3F1515', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' },
-    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' },
-    projectCard: { background: bg2, border: `1px solid ${border}`, borderRadius: '18px', padding: '20px', cursor: 'pointer', boxShadow: shadow },
-    cardDelBtn: { background: 'none', border: 'none', fontSize: '15px', cursor: 'pointer', padding: '2px 6px', borderRadius: '8px', lineHeight: 1, opacity: 0.7 },
-    projectName: { fontSize: '15px', fontWeight: '600', color: text1, marginBottom: '6px' },
-    projectDesc: { fontSize: '13px', color: text2, marginBottom: '16px', lineHeight: '1.5' },
-    projectFooter: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-    projectMeta: { fontSize: '12px', color: text3 },
-    projectArrow: { fontSize: '13px', color: '#6366F1', fontWeight: '600' },
-    tabs: { display: 'flex', gap: '2px', background: tabBg, borderRadius: '12px', padding: '4px', marginBottom: '24px', border: `1px solid ${border}` },
-    tab: { flex: 1, padding: '8px 12px', borderRadius: '9px', border: 'none', background: 'none', fontSize: '13px', cursor: 'pointer', color: text2, fontWeight: '500' },
-    tabActive: { flex: 1, padding: '8px 12px', borderRadius: '9px', border: 'none', background: tabActiveBg, fontSize: '13px', cursor: 'pointer', color: text1, fontWeight: '600', boxShadow: dark ? 'none' : '0 1px 3px rgba(0,0,0,0.1)' },
-    // home toggle (Dashboard / Projects)
-    homeToggle: { display: 'inline-flex', gap: '2px', background: tabBg, borderRadius: '12px', padding: '4px', marginBottom: '28px', border: `1px solid ${border}` },
-    homeToggleBtn: { padding: '8px 18px', borderRadius: '9px', border: 'none', background: 'none', fontSize: '13px', cursor: 'pointer', color: text2, fontWeight: '600' },
-    homeToggleActive: { padding: '8px 18px', borderRadius: '9px', border: 'none', background: tabActiveBg, fontSize: '13px', cursor: 'pointer', color: text1, fontWeight: '600', boxShadow: dark ? 'none' : '0 1px 3px rgba(0,0,0,0.1)' },
+    badge: { fontSize: '11px', fontWeight: '700', padding: '5px 11px', borderRadius: '999px', letterSpacing: '0.01em' },
+    pmBadge: { background: accentTint, color: accent },
+    themeBtn: { background: bg3, border: `1px solid ${border}`, color: text2, fontSize: '12.5px', fontWeight: '600', padding: '7px 12px', borderRadius: '9px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' },
+    nav: { display: 'flex', gap: '3px', background: bg3, padding: '4px', borderRadius: '11px', border: `1px solid ${border}` },
+    navItem: { padding: '7px 16px', borderRadius: '8px', border: 'none', background: 'none', fontSize: '13px', cursor: 'pointer', color: text2, fontWeight: '600' },
+    navItemActive: { padding: '7px 16px', borderRadius: '8px', border: 'none', background: tabActiveBg, fontSize: '13px', cursor: 'pointer', color: text1, fontWeight: '700', boxShadow: dark ? 'none' : shadow },
+    container: { maxWidth: '960px', margin: '0 auto', padding: '36px 24px' },
+    card: { background: bg2, borderRadius: '16px', padding: '22px', marginBottom: '16px', border: `1px solid ${border}`, boxShadow: shadow },
+    cardTitle: { fontSize: '14px', fontWeight: '700', color: text1, marginBottom: '16px' },
+    input: { width: '100%', padding: '11px 14px', borderRadius: '10px', border: `1px solid ${border2}`, marginBottom: '10px', fontSize: '13.5px', boxSizing: 'border-box', outline: 'none', background: inputBg, color: text1, fontFamily: FONT },
+    textarea: { width: '100%', padding: '11px 14px', borderRadius: '10px', border: `1px solid ${border2}`, marginBottom: '10px', fontSize: '13.5px', height: '160px', boxSizing: 'border-box', resize: 'vertical', fontFamily: FONT, background: inputBg, color: text1 },
+    btn: { background: gradient, color: '#fff', border: 'none', padding: '11px 20px', borderRadius: '11px', fontSize: '13.5px', cursor: 'pointer', fontWeight: '700', boxShadow: `0 4px 14px ${dark ? 'rgba(140,125,243,0.30)' : 'rgba(109,90,224,0.28)'}`, display: 'inline-flex', alignItems: 'center', gap: '7px', fontFamily: FONT },
+    btnSm: { background: accent, color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '9px', fontSize: '12.5px', cursor: 'pointer', fontWeight: '700', fontFamily: FONT },
+    btnDanger: { background: 'transparent', color: danger, border: `1px solid ${dark ? '#3F1D1D' : '#F5C6C6'}`, padding: '7px 13px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontWeight: '600', fontFamily: FONT },
+    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px' },
+    projectCard: { background: bg2, border: `1px solid ${border}`, borderRadius: '16px', padding: '20px', cursor: 'pointer', boxShadow: shadow, display: 'flex', flexDirection: 'column', gap: '6px' },
+    cardDelBtn: { background: 'none', border: 'none', color: text3, cursor: 'pointer', padding: '4px', borderRadius: '7px', lineHeight: 1, display: 'flex' },
+    projectName: { fontSize: '14.5px', fontWeight: '700', color: text1 },
+    projectDesc: { fontSize: '12.5px', color: text2, lineHeight: '1.5', minHeight: '34px' },
+    projectFooter: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px', paddingTop: '12px', borderTop: `1px solid ${border}` },
+    projectMeta: { fontSize: '11.5px', color: text3 },
+    projectArrow: { fontSize: '12.5px', color: accent, fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' },
+    tabs: { display: 'flex', gap: '2px', background: tabBg, borderRadius: '11px', padding: '4px', marginBottom: '24px', border: `1px solid ${border}`, flexWrap: 'wrap' },
+    tab: { flex: 1, padding: '8px 12px', borderRadius: '8px', border: 'none', background: 'none', fontSize: '12.5px', cursor: 'pointer', color: text2, fontWeight: '600', fontFamily: FONT, whiteSpace: 'nowrap' },
+    tabActive: { flex: 1, padding: '8px 12px', borderRadius: '8px', border: 'none', background: tabActiveBg, fontSize: '12.5px', cursor: 'pointer', color: text1, fontWeight: '700', fontFamily: FONT, whiteSpace: 'nowrap', boxShadow: dark ? 'none' : shadow },
     // KPI cards
-    kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '16px', marginBottom: '28px' },
-    kpiCard: { background: bg2, border: `1px solid ${border}`, borderRadius: '18px', padding: '22px', boxShadow: shadow },
+    kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px', marginBottom: '32px' },
+    kpiCard: { background: bg2, border: `1px solid ${border}`, borderRadius: '16px', padding: '20px', boxShadow: shadow },
     kpiTop: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' },
-    kpiIcon: { width: '40px', height: '40px', borderRadius: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '19px' },
-    kpiLabel: { fontSize: '13px', color: text2, fontWeight: '500' },
-    kpiValue: { fontSize: '32px', fontWeight: '700', color: text1, letterSpacing: '-0.6px', lineHeight: 1.1 },
-    kpiSub: { fontSize: '12px', color: text3, marginTop: '6px' },
+    kpiIcon: { width: '36px', height: '36px', borderRadius: '10px', background: accentTint, color: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    kpiLabel: { fontSize: '12.5px', color: text2, fontWeight: '600' },
+    kpiValue: { fontSize: '30px', fontWeight: '800', color: text1, letterSpacing: '-0.02em', lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' },
+    kpiSub: { fontSize: '11.5px', color: text3, marginTop: '6px' },
     // table
-    tableCard: { background: bg2, border: `1px solid ${border}`, borderRadius: '18px', overflow: 'hidden', boxShadow: shadow },
-    tableHeadRow: { display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', padding: '14px 22px', borderBottom: `1px solid ${border}`, fontSize: '11px', fontWeight: '700', color: text3, textTransform: 'uppercase', letterSpacing: '0.7px' },
-    tableRow: { display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', padding: '15px 22px', borderBottom: `1px solid ${border}`, fontSize: '14px', color: text1, alignItems: 'center' },
-    tableCellName: { fontWeight: '600', color: text1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: '12px' },
+    tableCard: { background: bg2, border: `1px solid ${border}`, borderRadius: '16px', overflow: 'hidden', boxShadow: shadow },
+    tableHeadRow: { display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', padding: '13px 20px', borderBottom: `1px solid ${border}`, fontSize: '10.5px', fontWeight: '700', color: text3, textTransform: 'uppercase', letterSpacing: '0.06em', background: bg3 },
+    tableRow: { display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', padding: '14px 20px', borderBottom: `1px solid ${border}`, fontSize: '13.5px', color: text1, alignItems: 'center' },
+    tableCellName: { fontWeight: '700', color: text1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: '12px' },
     tableCellNum: { color: text2, fontVariantNumeric: 'tabular-nums' },
-    tableCaption: { fontSize: '12px', color: text3, marginTop: '12px', textAlign: 'center' },
+    tableCaption: { fontSize: '11.5px', color: text3, marginTop: '12px', textAlign: 'center' },
     // upload / docs
-    uploadBox: { border: `1px dashed ${border2}`, borderRadius: '12px', padding: '32px', textAlign: 'center', cursor: 'pointer', marginBottom: '16px', background: bg3 },
-    uploadText: { fontSize: '14px', fontWeight: '600', color: text1 },
-    uploadSub: { fontSize: '12px', color: text3, marginTop: '6px' },
-    divider: { textAlign: 'center', color: text3, fontSize: '12px', margin: '20px 0' },
-    docItem: { display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px', borderRadius: '12px', border: `1px solid ${border}`, marginBottom: '8px', background: bg2 },
-    docIcon: { width: '36px', height: '36px', borderRadius: '8px', background: bg3, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 },
+    uploadBox: { border: `1.5px dashed ${border2}`, borderRadius: '12px', padding: '30px', textAlign: 'center', cursor: 'pointer', marginBottom: '18px', background: bg3, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' },
+    uploadText: { fontSize: '13.5px', fontWeight: '700', color: text1 },
+    uploadSub: { fontSize: '11.5px', color: text3, marginTop: '4px' },
+    divider: { textAlign: 'center', color: text3, fontSize: '11.5px', margin: '20px 0' },
+    docItem: { display: 'flex', alignItems: 'center', gap: '12px', padding: '13px 15px', borderRadius: '11px', border: `1px solid ${border}`, marginBottom: '8px', background: bg2 },
+    docIcon: { width: '34px', height: '34px', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '800', flexShrink: 0, letterSpacing: '0.02em' },
     docInfo: { flex: 1, minWidth: 0 },
-    docTitle: { fontSize: '14px', fontWeight: '500', color: text1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-    docMeta: { fontSize: '12px', color: text3, marginTop: '3px' },
-    linkBox: { background: dark ? '#0D1F12' : '#F0FDF4', border: dark ? '1px solid #1A3A22' : '1px solid #BBF7D0', borderRadius: '12px', padding: '16px', display: 'flex', alignItems: 'center', gap: '12px', marginTop: '12px' },
-    linkText: { flex: 1, fontSize: '13px', color: dark ? '#4ADE80' : '#15803D', fontFamily: 'monospace', wordBreak: 'break-all' },
+    docTitle: { fontSize: '13.5px', fontWeight: '600', color: text1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+    docMeta: { fontSize: '11.5px', color: text3, marginTop: '3px' },
+    linkBox: { background: dark ? '#0D2418' : '#F0FDF4', border: dark ? '1px solid #1A3A22' : '1px solid #BBF7D0', borderRadius: '11px', padding: '15px', display: 'flex', alignItems: 'center', gap: '12px', marginTop: '12px' },
+    linkText: { flex: 1, fontSize: '12.5px', color: dark ? '#4ADE80' : '#15803D', fontFamily: 'monospace', wordBreak: 'break-all' },
     historyItem: { padding: '16px', borderRadius: '12px', border: `1px solid ${border}`, marginBottom: '10px', background: bg2 },
-    historyQ: { fontSize: '13px', fontWeight: '600', color: text1, marginBottom: '8px', display: 'flex', alignItems: 'flex-start', gap: '8px' },
-    historyQBadge: { fontSize: '10px', fontWeight: '700', background: '#6366F1', color: '#fff', padding: '2px 6px', borderRadius: '4px', marginTop: '2px', flexShrink: 0 },
-    historyA: { fontSize: '13px', color: text2, lineHeight: '1.6' },
+    historyQ: { fontSize: '13px', fontWeight: '700', color: text1, marginBottom: '8px', display: 'flex', alignItems: 'flex-start', gap: '8px' },
+    historyQBadge: { fontSize: '10px', fontWeight: '800', background: accent, color: '#fff', padding: '2px 6px', borderRadius: '5px', marginTop: '2px', flexShrink: 0 },
+    historyA: { fontSize: '13px', color: text2, lineHeight: '1.65' },
     historyMeta: { fontSize: '11px', color: text3, marginTop: '10px' },
-    expandBtn: { background: 'none', border: 'none', color: '#6366F1', fontSize: '12px', cursor: 'pointer', padding: '4px 0', marginTop: '4px' },
+    expandBtn: { background: 'none', border: 'none', color: accent, fontSize: '12px', cursor: 'pointer', padding: '4px 0', marginTop: '4px', fontWeight: '600', fontFamily: FONT },
 
     // ---------- CHAT (two-pane) ----------
-    chatLayout: { display: 'flex', height: '100vh', width: '100%', background: bg, overflow: 'hidden', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' },
-    chatSidebar: { width: '280px', flexShrink: 0, background: bg2, borderRight: `1px solid ${border}`, display: 'flex', flexDirection: 'column' },
-    sidebarHeader: { padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${border}` },
-    sidebarFooter: { padding: '14px 16px', borderTop: `1px solid ${border}`, fontSize: '12px', color: text3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-    newChatBtn: { width: '100%', background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', color: '#fff', border: 'none', padding: '11px', borderRadius: '11px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' },
-    chatList: { flex: 1, overflowY: 'auto', padding: '8px' },
-    chatListItem: { padding: '10px 12px', borderRadius: '10px', cursor: 'pointer', fontSize: '13px', color: text2, marginBottom: '2px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' },
-    chatListItemActive: { background: bg3, color: text1, fontWeight: '600' },
+    chatLayout: { display: 'flex', height: '100vh', width: '100%', background: bg, overflow: 'hidden', fontFamily: FONT },
+    chatSidebar: { width: '272px', flexShrink: 0, background: bg3, borderRight: `1px solid ${border}`, display: 'flex', flexDirection: 'column' },
+    sidebarHeader: { padding: '16px 16px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+    sidebarFooter: { padding: '14px 16px', borderTop: `1px solid ${border}`, fontSize: '11.5px', color: text3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+    newChatBtn: { width: '100%', background: accent, color: '#fff', border: 'none', padding: '11px', borderRadius: '10px', fontSize: '13.5px', cursor: 'pointer', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', boxShadow: `0 4px 12px ${dark ? 'rgba(140,125,243,0.28)' : 'rgba(109,90,224,0.28)'}`, fontFamily: FONT },
+    histLabel: { fontSize: '10.5px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.06em', color: text3, margin: '18px 12px 8px' },
+    chatList: { flex: 1, overflowY: 'auto', padding: '0 8px 8px' },
+    chatListItem: { padding: '9px 10px', borderRadius: '9px', cursor: 'pointer', fontSize: '12.5px', color: text2, marginBottom: '2px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' },
+    chatListItemActive: { background: bg2, color: text1, fontWeight: '700', boxShadow: shadow },
     chatDelBtn: { background: 'none', border: 'none', color: text3, fontSize: '15px', cursor: 'pointer', lineHeight: 1, padding: '0 2px', flexShrink: 0 },
-    iconBtn: { background: bg3, border: `1px solid ${border}`, color: text2, fontSize: '16px', cursor: 'pointer', width: '34px', height: '34px', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    iconBtn: { background: bg3, border: `1px solid ${border}`, color: text2, cursor: 'pointer', width: '34px', height: '34px', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     chatMain: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh' },
-    chatMainHeader: { padding: '12px 18px', borderBottom: `1px solid ${border}`, display: 'flex', alignItems: 'center', gap: '12px', background: bg2 },
-    headerSelect: { fontSize: '15px', fontWeight: '700', color: text1, background: bg3, border: `1px solid ${border}`, outline: 'none', cursor: 'pointer', maxWidth: '280px', padding: '7px 10px', borderRadius: '10px' },
-    teamBar: { display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 18px', borderBottom: `1px solid ${border}`, background: bg2, flexWrap: 'wrap' },
-    teamLabel: { fontSize: '12px', color: text3, fontWeight: '600', marginRight: '4px' },
-    teamTab: { padding: '6px 16px', borderRadius: '20px', border: `1px solid ${border2}`, background: 'transparent', color: text2, fontSize: '13px', cursor: 'pointer', fontWeight: '500' },
-    teamTabActive: { padding: '6px 16px', borderRadius: '20px', border: '1px solid transparent', background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', color: '#fff', fontSize: '13px', cursor: 'pointer', fontWeight: '600' },
-    chatProjectName: { fontSize: '15px', fontWeight: '700', color: text1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-    chatProjectSub: { fontSize: '12px', color: text3, marginTop: '1px' },
-    chatScroll: { flex: 1, overflowY: 'auto', padding: '24px 20px', minHeight: 0 },
-    chatInner: { maxWidth: '780px', margin: '0 auto', width: '100%' },
+    chatMainHeader: { padding: '13px 22px', borderBottom: `1px solid ${border}`, display: 'flex', alignItems: 'center', gap: '12px', background: bg2 },
+    switcherWrap: { position: 'relative', maxWidth: '320px' },
+    headerSelect: { fontSize: '14.5px', fontWeight: '700', color: text1, background: bg3, border: `1px solid ${border}`, outline: 'none', cursor: 'pointer', maxWidth: '320px', width: '100%', padding: '8px 30px 8px 12px', borderRadius: '10px', appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none', fontFamily: FONT },
+    switcherChevron: { position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: text3, pointerEvents: 'none' },
+    teamBar: { display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 22px', borderBottom: `1px solid ${border}`, background: bg2, flexWrap: 'wrap' },
+    teamLabel: { fontSize: '11px', color: text3, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' },
+    teamTabsGroup: { display: 'flex', gap: '2px', background: bg3, padding: '3px', borderRadius: '10px' },
+    teamTab: { padding: '6px 14px', borderRadius: '7px', border: 'none', background: 'transparent', color: text2, fontSize: '12.5px', cursor: 'pointer', fontWeight: '600', fontFamily: FONT },
+    teamTabActive: { padding: '6px 14px', borderRadius: '7px', border: 'none', background: accent, color: '#fff', fontSize: '12.5px', cursor: 'pointer', fontWeight: '700', fontFamily: FONT },
+    chatProjectSub: { fontSize: '11.5px', color: text3, marginTop: '2px' },
+    chatScroll: { flex: 1, overflowY: 'auto', padding: '26px 20px', minHeight: 0 },
+    chatInner: { maxWidth: '760px', margin: '0 auto', width: '100%' },
     chatInputBar: { borderTop: `1px solid ${border}`, padding: '14px 20px', background: bg2, flexShrink: 0 },
     emptyChat: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', gap: '12px', textAlign: 'center' },
-    emptyChatIcon: { width: '56px', height: '56px', background: bg2, borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', border: `1px solid ${border}` },
-    emptyChatTitle: { fontSize: '17px', fontWeight: '600', color: text1 },
-    emptyChatSub: { fontSize: '13px', color: text3, maxWidth: '320px' },
+    emptyChatIcon: { width: '54px', height: '54px', background: accentTint, color: accent, borderRadius: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${border}` },
+    emptyChatTitle: { fontSize: '16.5px', fontWeight: '700', color: text1 },
+    emptyChatSub: { fontSize: '13px', color: text3, maxWidth: '320px', lineHeight: 1.6 },
     userMsg: { display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' },
-    userBubble: { background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: '18px 18px 4px 18px', padding: '12px 18px', maxWidth: '75%', color: '#FFFFFF', fontSize: '14px', lineHeight: '1.6', boxShadow: '0 4px 14px rgba(99,102,241,0.25)' },
-    aiMsgRow: { display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'flex-start' },
-    aiAvatar: { width: '32px', height: '32px', background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0, marginTop: '2px' },
-    aiBubble: { background: bg2, border: `1px solid ${border}`, borderRadius: '4px 18px 18px 18px', padding: '14px 18px', maxWidth: '82%', fontSize: '14px', lineHeight: '1.7', color: text1 },
-    inputWrap: { background: bg2, borderRadius: '16px', border: `1px solid ${border2}`, padding: '6px 6px 6px 18px', display: 'flex', alignItems: 'center', gap: '8px' },
-    chatInput: { flex: 1, border: 'none', fontSize: '14px', outline: 'none', fontFamily: 'inherit', background: 'transparent', color: text1, padding: '6px 0' },
-    sendBtn: { background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', fontWeight: '600', whiteSpace: 'nowrap' },
-    attachBtn: { background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', padding: '4px 8px', color: text2 },
-    backBtn: { background: bg3, border: `1px solid ${border}`, color: text2, fontSize: '13px', cursor: 'pointer', padding: '6px 12px', borderRadius: '8px' },
-    sectionLabel: { fontSize: '11px', fontWeight: '600', color: text3, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '16px' },
-    toast: { position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', background: dark ? '#1A1A1A' : '#111', color: '#fff', border: `1px solid ${border}`, padding: '10px 20px', borderRadius: '10px', fontSize: '14px', zIndex: 100, whiteSpace: 'nowrap' },
-    processing: { fontSize: '13px', color: '#6366F1', marginBottom: '12px', fontStyle: 'italic' },
-    poweredBy: { textAlign: 'center', fontSize: '12px', color: text3, marginTop: '12px' },
-    pageTitle: { fontSize: '24px', fontWeight: '700', color: text1, marginBottom: '6px' },
-    pageSub: { fontSize: '14px', color: text3, marginBottom: '32px' },
-    emptyState: { textAlign: 'center', color: text3, padding: '48px', fontSize: '14px' },
-    emptyIcon: { fontSize: '28px', marginBottom: '10px' },
+    userBubble: { background: accent, borderRadius: '16px 16px 4px 16px', padding: '11px 16px', maxWidth: '72%', color: '#FFFFFF', fontSize: '14px', lineHeight: '1.6', boxShadow: `0 4px 14px ${dark ? 'rgba(140,125,243,0.22)' : 'rgba(109,90,224,0.22)'}` },
+    aiMsgRow: { display: 'flex', gap: '11px', marginBottom: '16px', alignItems: 'flex-start' },
+    aiAvatar: { width: '30px', height: '30px', background: gradient, borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexShrink: 0, marginTop: '2px' },
+    aiBubble: { background: bg2, border: `1px solid ${border}`, borderRadius: '4px 16px 16px 16px', padding: '14px 18px', maxWidth: '82%', fontSize: '13.8px', lineHeight: '1.7', color: text1 },
+    inputWrap: { background: bg2, borderRadius: '14px', border: `1px solid ${border2}`, padding: '6px 6px 6px 16px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: shadow },
+    chatInput: { flex: 1, border: 'none', fontSize: '14px', outline: 'none', fontFamily: FONT, background: 'transparent', color: text1, padding: '7px 0' },
+    sendBtn: { background: accent, color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', fontWeight: '700', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px', fontFamily: FONT },
+    attachBtn: { background: 'none', border: 'none', cursor: 'pointer', padding: '6px 8px', color: text2, display: 'flex' },
+    backBtn: { background: bg3, border: `1px solid ${border}`, color: text2, fontSize: '12.5px', cursor: 'pointer', padding: '7px 13px', borderRadius: '9px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600', fontFamily: FONT },
+    sectionLabel: { fontSize: '11px', fontWeight: '700', color: text3, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '14px' },
+    toast: { position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', background: dark ? '#26242F' : '#1C1B24', color: '#fff', border: `1px solid ${border}`, padding: '10px 20px', borderRadius: '11px', fontSize: '13.5px', zIndex: 100, whiteSpace: 'nowrap', boxShadow: shadowLg },
+    processing: { fontSize: '12.5px', color: accent, marginBottom: '12px', fontStyle: 'italic' },
+    poweredBy: { textAlign: 'center', fontSize: '11.5px', color: text3, marginTop: '12px' },
+    pageTitle: { fontSize: '25px', fontWeight: '800', color: text1, marginBottom: '5px', letterSpacing: '-0.02em' },
+    pageSub: { fontSize: '13.5px', color: text3, marginBottom: '30px' },
+    emptyState: { textAlign: 'center', color: text3, padding: '44px', fontSize: '13.5px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' },
     figmaRow: { display: 'flex', gap: '8px', marginBottom: '16px' },
     imagePreviewWrap: { marginBottom: '8px', position: 'relative', display: 'inline-block' },
-    imagePreview: { maxHeight: '120px', borderRadius: '8px', border: `1px solid ${border}` },
+    imagePreview: { maxHeight: '120px', borderRadius: '9px', border: `1px solid ${border}` },
     imageRemoveBtn: { position: 'absolute', top: '4px', right: '4px', background: '#111', color: '#fff', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-    dangerZone: { marginTop: '24px', background: dark ? '#1A0F0F' : '#FEF2F2', border: dark ? '1px solid #3F1D1D' : '1px solid #FECACA', borderRadius: '16px', padding: '20px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' },
-    dangerTitle: { fontSize: '14px', fontWeight: '700', color: dark ? '#F87171' : '#B91C1C' },
-    dangerSub: { fontSize: '12px', color: dark ? '#9A6B6B' : '#C26B6B', marginTop: '4px', maxWidth: '420px', lineHeight: 1.5 },
-    btnDangerSolid: { background: '#DC2626', color: '#fff', border: 'none', padding: '11px 20px', borderRadius: '12px', fontSize: '13px', cursor: 'pointer', fontWeight: '600', whiteSpace: 'nowrap', boxShadow: '0 4px 14px rgba(220,38,38,0.30)' },
-    adminPill: { fontSize: '11px', fontWeight: '700', padding: '3px 10px', borderRadius: '20px', background: dark ? '#3F1D1D' : '#FEE2E2', color: dark ? '#FCA5A5' : '#B91C1C' },
-    footer: { textAlign: 'center', fontSize: '12px', color: text3, marginTop: '40px', paddingBottom: '8px' },
-    shadowLg,
+    dangerZone: { marginTop: '24px', background: dark ? '#241416' : '#FEF2F2', border: dark ? '1px solid #3F1D1D' : '1px solid #FECACA', borderRadius: '15px', padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' },
+    dangerTitle: { fontSize: '13.5px', fontWeight: '700', color: danger },
+    dangerSub: { fontSize: '11.5px', color: dark ? '#9A6B6B' : '#C26B6B', marginTop: '4px', maxWidth: '420px', lineHeight: 1.5 },
+    btnDangerSolid: { background: '#DC2626', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '11px', fontSize: '12.5px', cursor: 'pointer', fontWeight: '700', whiteSpace: 'nowrap', boxShadow: '0 4px 14px rgba(220,38,38,0.28)', fontFamily: FONT },
+    adminPill: { fontSize: '10.5px', fontWeight: '700', padding: '5px 11px', borderRadius: '999px', background: dark ? '#3F1D1D' : '#FEE2E2', color: dark ? '#FCA5A5' : '#B91C1C' },
+    footer: { textAlign: 'center', fontSize: '11.5px', color: text3, marginTop: '36px', paddingBottom: '8px' },
+    shadow, shadowLg,
     bg, bg2, bg3, border, border2, text1, text2, text3,
   }
 }
@@ -187,18 +200,20 @@ function makeStyles(dark) {
 function GlobalStyles() {
   return (
     <style>{`
+      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
       * { box-sizing: border-box; }
       body { margin: 0; }
       button { transition: transform .12s ease, opacity .12s ease, box-shadow .15s ease, background .15s ease; }
-      button:hover:not(:disabled) { opacity: .93; }
+      button:hover:not(:disabled) { opacity: .92; }
       button:active:not(:disabled) { transform: scale(.98); }
       button:disabled { opacity: .55; cursor: default; }
-      input, textarea { transition: border-color .15s ease, box-shadow .15s ease; }
-      input:focus, textarea:focus { border-color: #6366F1 !important; box-shadow: 0 0 0 3px rgba(99,102,241,0.16); }
+      input, textarea, select { transition: border-color .15s ease, box-shadow .15s ease; }
+      input:focus, textarea:focus { border-color: #6D5AE0 !important; box-shadow: 0 0 0 3px rgba(109,90,224,0.16); }
+      select:focus { outline: none; box-shadow: 0 0 0 3px rgba(109,90,224,0.16); }
       .mind-card { transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease; }
-      .mind-card:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(16,24,40,0.10); border-color: rgba(99,102,241,0.35); }
+      .mind-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(32,28,55,0.10); border-color: rgba(109,90,224,0.35); }
       .mind-chat-item:hover { background: rgba(127,127,127,0.12) !important; }
-      .mind-row:hover { background: rgba(99,102,241,0.05); }
+      .mind-row:hover { background: rgba(109,90,224,0.05); }
       ::-webkit-scrollbar { width: 10px; height: 10px; }
       ::-webkit-scrollbar-thumb { background: rgba(127,127,127,0.35); border-radius: 10px; }
       ::-webkit-scrollbar-thumb:hover { background: rgba(127,127,127,0.55); }
@@ -207,12 +222,62 @@ function GlobalStyles() {
   )
 }
 
+// ---------- icon set (inline SVG, no emoji) ----------
+function Icon({ name, size = 16, strokeWidth = 1.9 }) {
+  const p = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth, strokeLinecap: 'round', strokeLinejoin: 'round' }
+  switch (name) {
+    case 'mark':
+      return <svg {...p}><circle cx="6" cy="7" r="2.1" /><circle cx="18" cy="7" r="2.1" /><circle cx="12" cy="17.5" r="2.4" /><path d="M7.7 8.3 10.3 15.8M16.3 8.3 13.7 15.8M8.1 7h7.8" /></svg>
+    case 'sun':
+      return <svg {...p}><circle cx="12" cy="12" r="4.2" /><path d="M12 2.5v2.4M12 19.1v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7" /></svg>
+    case 'moon':
+      return <svg {...p}><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11Z" /></svg>
+    case 'folder':
+      return <svg {...p}><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" /></svg>
+    case 'chat':
+      return <svg {...p}><path d="M21 12a8 8 0 1 1-3.4-6.5" /><path d="M21 4v5h-5" /></svg>
+    case 'clock':
+      return <svg {...p}><circle cx="12" cy="12" r="8.2" /><path d="M12 7.5V12l3 2" /></svg>
+    case 'chevronDown':
+      return <svg {...p}><path d="m6 9 6 6 6-6" /></svg>
+    case 'plus':
+      return <svg {...p}><path d="M12 5v14M5 12h14" /></svg>
+    case 'arrowRight':
+      return <svg {...p}><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+    case 'arrowLeft':
+      return <svg {...p}><path d="M5 12h14M11 6l-6 6 6 6" /></svg>
+    case 'paperclip':
+      return <svg {...p}><path d="M21.4 11.6 12.8 20.2a5 5 0 0 1-7.1-7.1l8.6-8.6a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4l7.9-7.9" /></svg>
+    case 'trash':
+      return <svg {...p}><path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13" /></svg>
+    case 'upload':
+      return <svg {...p}><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5" /><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15" /></svg>
+    case 'menu':
+      return <svg {...p}><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+    case 'search':
+      return <svg {...p}><circle cx="10.5" cy="10.5" r="6.5" /><path d="M20.5 20.5 15.8 15.8" /></svg>
+    case 'inbox':
+      return <svg {...p}><path d="M21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5" /><path d="M3 13h5l1.6 2.4h4.8L16 13h5" /><path d="M3 13 6 5h12l3 8" /></svg>
+    default:
+      return null
+  }
+}
+
 function Logo({ s }) {
   return (
     <div style={s.logoWrap}>
-      <div style={s.logoIcon}>🧠</div>
+      <div style={s.logoIcon}><Icon name="mark" size={15} strokeWidth={2} /></div>
       <span style={s.logoText}>Mind</span>
     </div>
+  )
+}
+
+function ThemeToggle({ dark, toggle, s }) {
+  return (
+    <button style={s.themeBtn} onClick={toggle}>
+      <Icon name={dark ? 'sun' : 'moon'} size={14} />
+      {dark ? 'Light' : 'Dark'}
+    </button>
   )
 }
 
@@ -265,17 +330,27 @@ function LoginPage({ s, onSuccess }) {
 
   return (
     <div style={{ minHeight: '100vh', background: s.page.background, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: s.page.fontFamily, position: 'relative', overflow: 'hidden' }}>
-      <style>{`@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-8px)} 80%{transform:translateX(8px)} } .shake{animation:shake 0.5s;}`}</style>
-      <div style={{ position: 'absolute', top: '-10%', left: '50%', transform: 'translateX(-50%)', width: '520px', height: '520px', background: 'radial-gradient(circle, rgba(139,92,246,0.18), rgba(99,102,241,0) 70%)', pointerEvents: 'none' }} />
+      <style>{`
+        @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-8px)} 80%{transform:translateX(8px)} }
+        .shake{animation:shake 0.5s;}
+      `}</style>
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        backgroundImage: `radial-gradient(${s.border2 || 'rgba(127,127,127,0.35)'} 1px, transparent 1px)`,
+        backgroundSize: '26px 26px', opacity: 0.5,
+      }} />
+      <div style={{ position: 'absolute', top: '-10%', left: '50%', transform: 'translateX(-50%)', width: '520px', height: '520px', background: 'radial-gradient(circle, rgba(139,92,246,0.16), rgba(99,102,241,0) 70%)', pointerEvents: 'none' }} />
       <div style={{ width: '100%', maxWidth: '400px', padding: '40px 24px', textAlign: 'center', position: 'relative' }}>
-        <div style={{ width: '64px', height: '64px', background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', margin: '0 auto 24px', boxShadow: '0 10px 30px rgba(99,102,241,0.35)' }}>🧠</div>
-        <div style={{ fontSize: '36px', fontWeight: '700', color: s.text1, marginBottom: '8px', letterSpacing: '-0.5px' }}>Mind</div>
-        <div style={{ fontSize: '15px', color: s.text2, marginBottom: '40px', lineHeight: '1.7' }}>Your AI product assistant for Way.com.<br />Ask anything about your projects instantly.</div>
-        <div style={{ background: s.bg2, border: `1px solid ${s.border}`, borderRadius: '20px', padding: '32px', boxShadow: s.shadowLg }}>
-          <div style={{ fontSize: '13px', fontWeight: '600', color: s.text2, marginBottom: '12px', textAlign: 'left' }}>Enter access PIN</div>
+        <div style={{ width: '60px', height: '60px', background: 'linear-gradient(150deg, #6D5AE0, #4F3DC0)', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 22px', boxShadow: '0 10px 28px rgba(109,90,224,0.35)', color: '#fff' }}>
+          <Icon name="mark" size={28} strokeWidth={1.9} />
+        </div>
+        <div style={{ fontSize: '34px', fontWeight: '800', color: s.text1, marginBottom: '8px', letterSpacing: '-0.02em' }}>Mind</div>
+        <div style={{ fontSize: '14.5px', color: s.text2, marginBottom: '36px', lineHeight: '1.7' }}>Your AI product assistant for Way.com.<br />Ask anything about your projects instantly.</div>
+        <div style={{ background: s.bg2, border: `1px solid ${s.border}`, borderRadius: '18px', padding: '30px', boxShadow: s.shadowLg }}>
+          <div style={{ fontSize: '12.5px', fontWeight: '700', color: s.text2, marginBottom: '12px', textAlign: 'left' }}>Enter access PIN</div>
           <input
             className={shaking ? 'shake' : ''}
-            style={{ width: '100%', padding: '14px', borderRadius: '12px', border: `1px solid ${shaking ? '#F87171' : s.border}`, marginBottom: '12px', fontSize: '22px', letterSpacing: '8px', fontWeight: '700', textAlign: 'center', boxSizing: 'border-box', outline: 'none', background: s.bg2, color: s.text1, fontFamily: 'monospace' }}
+            style={{ width: '100%', padding: '14px', borderRadius: '11px', border: `1px solid ${shaking ? '#F87171' : s.border}`, marginBottom: '12px', fontSize: '22px', letterSpacing: '8px', fontWeight: '700', textAlign: 'center', boxSizing: 'border-box', outline: 'none', background: s.bg2, color: s.text1, fontFamily: 'monospace' }}
             placeholder="······"
             value={pin}
             maxLength={10}
@@ -284,12 +359,24 @@ function LoginPage({ s, onSuccess }) {
             autoFocus
           />
           {error && <div style={{ color: '#F87171', fontSize: '13px', marginBottom: '12px' }}>{error}</div>}
-          <button style={{ ...s.btn, width: '100%', padding: '13px', fontSize: '15px' }} onClick={handleSubmit}>Enter →</button>
+          <button style={{ ...s.btn, width: '100%', padding: '13px', fontSize: '14.5px', justifyContent: 'center' }} onClick={handleSubmit}>Enter <Icon name="arrowRight" size={15} strokeWidth={2.4} /></button>
         </div>
-        <div style={{ fontSize: '12px', color: s.text3, marginTop: '28px' }}>Mind AI built by Mukesh for Way with ❤️</div>
+        <div style={{ fontSize: '11.5px', color: s.text3, marginTop: '26px' }}>Mind AI built by Mukesh for Way ♥</div>
       </div>
     </div>
   )
+}
+
+// ---------- doc type badge (colored monogram, replaces emoji) ----------
+function docBadge(title, dark) {
+  const t = (title || '')
+  if (t.toLowerCase().endsWith('.pdf')) return { label: 'PDF', bg: dark ? '#3A1414' : '#FEF2F2', fg: dark ? '#F87171' : '#DC2626' }
+  if (t.match(/\.(png|jpg|jpeg|gif|webp)$/i)) return { label: 'IMG', bg: dark ? '#0D2A3D' : '#EFF6FF', fg: dark ? '#60A5FA' : '#2563EB' }
+  if (t.toLowerCase().endsWith('.docx')) return { label: 'DOC', bg: dark ? '#1E1B4B' : '#EEF2FF', fg: dark ? '#918CF0' : '#4F46E5' }
+  if (t.startsWith('Figma:')) return { label: 'FIG', bg: dark ? '#2B1638' : '#FAF5FF', fg: dark ? '#C084FC' : '#9333EA' }
+  if (t.startsWith('Confluence') || t.toLowerCase().includes('confluence')) return { label: 'CONF', bg: dark ? '#0D2433' : '#ECFEFF', fg: dark ? '#22D3EE' : '#0891B2' }
+  if (t.startsWith('Jira') || t.toLowerCase().includes('jira')) return { label: 'JIRA', bg: dark ? '#0D2433' : '#EFF6FF', fg: dark ? '#38BDF8' : '#2563EB' }
+  return { label: 'DOC', bg: dark ? '#24232C' : '#F5F4F1', fg: dark ? '#A6A4AD' : '#6B6975' }
 }
 
 // ---------------- PM PORTAL ----------------
@@ -473,17 +560,6 @@ function PMApp() {
     showToast('Project deleted')
   }
 
-  function getDocIcon(title) {
-    if (!title) return '📋'
-    if (title.toLowerCase().endsWith('.pdf')) return '📄'
-    if (title.match(/\.(png|jpg|jpeg|gif|webp)$/i)) return '🖼️'
-    if (title.toLowerCase().endsWith('.docx')) return '📝'
-    if (title.startsWith('Figma:')) return '🎨'
-    if (title.startsWith('Confluence:')) return '📘'
-    if (title.startsWith('Jira:')) return '🧩'
-    return '📋'
-  }
-
   // ----- HOME (Dashboard + Projects) -----
   if (view === 'home') {
     const sortedProjects = [...projects].sort((a, b) => (msgCounts[b.id] || 0) - (msgCounts[a.id] || 0))
@@ -493,18 +569,18 @@ function PMApp() {
       <div style={s.page}>
         <div style={s.header}>
           <Logo s={s} />
+          <div style={s.nav}>
+            <button style={homeTab === 'dashboard' ? s.navItemActive : s.navItem} onClick={() => { setHomeTab('dashboard'); fetchStats() }}>Dashboard</button>
+            <button style={homeTab === 'projects' ? s.navItemActive : s.navItem} onClick={() => setHomeTab('projects')}>Projects</button>
+          </div>
+          <div style={s.spacer} />
           <div style={s.headerRight}>
-            <button style={s.themeBtn} onClick={toggle}>{dark ? '☀️ Light' : '🌙 Dark'}</button>
+            <ThemeToggle dark={dark} toggle={toggle} s={s} />
             {isAdmin && <span style={s.adminPill}>Admin</span>}
             <span style={{ ...s.badge, ...s.pmBadge }}>PM Portal</span>
           </div>
         </div>
         <div style={s.container}>
-          <div style={s.homeToggle}>
-            <button style={homeTab === 'dashboard' ? s.homeToggleActive : s.homeToggleBtn} onClick={() => { setHomeTab('dashboard'); fetchStats() }}>Dashboard</button>
-            <button style={homeTab === 'projects' ? s.homeToggleActive : s.homeToggleBtn} onClick={() => setHomeTab('projects')}>Projects</button>
-          </div>
-
           {homeTab === 'dashboard' && (
             <div>
               <div style={s.pageTitle}>Dashboard</div>
@@ -513,21 +589,21 @@ function PMApp() {
               <div style={s.kpiGrid}>
                 <div style={s.kpiCard}>
                   <div style={s.kpiTop}>
-                    <div style={{ ...s.kpiIcon, background: dark ? '#1E1B4B' : '#EDE9FE' }}>📁</div>
+                    <div style={s.kpiIcon}><Icon name="folder" size={17} /></div>
                     <div style={s.kpiLabel}>Total Projects</div>
                   </div>
                   <div style={s.kpiValue}>{projects.length}</div>
                 </div>
                 <div style={s.kpiCard}>
                   <div style={s.kpiTop}>
-                    <div style={{ ...s.kpiIcon, background: dark ? '#0D1F2D' : '#E0F2FE' }}>💬</div>
+                    <div style={s.kpiIcon}><Icon name="chat" size={17} /></div>
                     <div style={s.kpiLabel}>Questions Asked</div>
                   </div>
                   <div style={s.kpiValue}>{totalQuestions}</div>
                 </div>
                 <div style={s.kpiCard}>
                   <div style={s.kpiTop}>
-                    <div style={{ ...s.kpiIcon, background: dark ? '#2D2410' : '#FEF3C7' }}>⏱️</div>
+                    <div style={s.kpiIcon}><Icon name="clock" size={17} /></div>
                     <div style={s.kpiLabel}>PM Time Saved</div>
                   </div>
                   <div style={s.kpiValue}>{formatMinutes(totalMinutesSaved)}</div>
@@ -568,7 +644,7 @@ function PMApp() {
                 <div style={s.cardTitle}>New project</div>
                 <input style={s.input} placeholder="Project name *" value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && createProject()} />
                 <input style={s.input} placeholder="Short description (optional)" value={newDesc} onChange={e => setNewDesc(e.target.value)} />
-                <button style={s.btn} onClick={createProject} disabled={creating}>{creating ? 'Creating...' : '+ Create project'}</button>
+                <button style={s.btn} onClick={createProject} disabled={creating}><Icon name="plus" size={14} strokeWidth={2.4} />{creating ? 'Creating...' : 'Create project'}</button>
               </div>
               <div style={s.sectionLabel}>All projects — {projects.length}</div>
               {projects.length === 0 && <div style={{ color: s.text2, fontSize: '14px', padding: '20px 0' }}>No projects yet.</div>}
@@ -577,19 +653,19 @@ function PMApp() {
                   <div key={p.id} className="mind-card" style={s.projectCard} onClick={() => openProject(p)}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
                       <div style={s.projectName}>{p.name}</div>
-                      {isAdmin && <button style={s.cardDelBtn} title="Delete project" onClick={(e) => { e.stopPropagation(); deleteProject(p) }}>🗑️</button>}
+                      {isAdmin && <button style={s.cardDelBtn} title="Delete project" onClick={(e) => { e.stopPropagation(); deleteProject(p) }}><Icon name="trash" size={15} /></button>}
                     </div>
                     {p.description && <div style={s.projectDesc}>{p.description}</div>}
                     <div style={s.projectFooter}>
                       <div style={s.projectMeta}>{new Date(p.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
-                      <div style={s.projectArrow}>Open →</div>
+                      <div style={s.projectArrow}>Open <Icon name="arrowRight" size={12} strokeWidth={2.4} /></div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
           )}
-          <div style={s.footer}>Mind AI built by Mukesh for Way with ❤️</div>
+          <div style={s.footer}>Mind AI built by Mukesh for Way with ♥</div>
         </div>
         <Toast msg={toast} s={s} />
       </div>
@@ -602,13 +678,12 @@ function PMApp() {
   return (
     <div style={s.page}>
       <div style={s.header}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button style={s.backBtn} onClick={() => { setView('home'); fetchStats() }}>← Back</button>
-          <Logo s={s} />
-          <span style={{ fontSize: '14px', color: s.text2 }}>/ {selectedProject.name}</span>
-        </div>
+        <button style={s.backBtn} onClick={() => { setView('home'); fetchStats() }}><Icon name="arrowLeft" size={13} strokeWidth={2.2} />Back</button>
+        <Logo s={s} />
+        <span style={{ fontSize: '13.5px', color: s.text2 }}>/ {selectedProject.name}</span>
+        <div style={s.spacer} />
         <div style={s.headerRight}>
-          <button style={s.themeBtn} onClick={toggle}>{dark ? '☀️ Light' : '🌙 Dark'}</button>
+          <ThemeToggle dark={dark} toggle={toggle} s={s} />
           {isAdmin && <span style={s.adminPill}>Admin</span>}
           <span style={{ ...s.badge, ...s.pmBadge }}>PM Portal</span>
         </div>
@@ -616,7 +691,7 @@ function PMApp() {
       <div style={s.container}>
         <div style={{ marginBottom: '24px' }}>
           <div style={s.pageTitle}>{selectedProject.name}</div>
-          {selectedProject.description && <div style={{ fontSize: '14px', color: s.text2 }}>{selectedProject.description}</div>}
+          {selectedProject.description && <div style={{ fontSize: '13.5px', color: s.text2 }}>{selectedProject.description}</div>}
         </div>
         <div style={s.tabs}>
           <button style={tab === 'docs' ? s.tabActive : s.tab} onClick={() => setTab('docs')}>Documents {documents.length > 0 && `(${documents.length})`}</button>
@@ -627,17 +702,22 @@ function PMApp() {
 
         {tab === 'docs' && (
           <div>
-            {documents.length === 0 && <div style={{ ...s.card, ...s.emptyState }}><div style={s.emptyIcon}>📂</div>No documents yet.</div>}
-            {documents.map(doc => (
-              <div key={doc.id} style={s.docItem}>
-                <div style={s.docIcon}>{getDocIcon(doc.title)}</div>
-                <div style={s.docInfo}>
-                  <div style={s.docTitle}>{doc.title}</div>
-                  <div style={s.docMeta}>{new Date(doc.created_at).toLocaleDateString()} · {(doc.content.length / 1000).toFixed(1)}k chars</div>
+            {documents.length === 0 && (
+              <div style={{ ...s.card, ...s.emptyState }}><Icon name="folder" size={26} strokeWidth={1.6} />No documents yet.</div>
+            )}
+            {documents.map(doc => {
+              const badge = docBadge(doc.title, dark)
+              return (
+                <div key={doc.id} style={s.docItem}>
+                  <div style={{ ...s.docIcon, background: badge.bg, color: badge.fg }}>{badge.label}</div>
+                  <div style={s.docInfo}>
+                    <div style={s.docTitle}>{doc.title}</div>
+                    <div style={s.docMeta}>{new Date(doc.created_at).toLocaleDateString()} · {(doc.content.length / 1000).toFixed(1)}k chars</div>
+                  </div>
+                  <button style={s.btnDanger} onClick={() => deleteDocument(doc.id)}>Delete</button>
                 </div>
-                <button style={s.btnDanger} onClick={() => deleteDocument(doc.id)}>Delete</button>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
 
@@ -645,7 +725,7 @@ function PMApp() {
           <div style={s.card}>
             <div style={s.cardTitle}>Upload documents</div>
             <div style={s.uploadBox} onClick={() => fileInputRef.current.click()}>
-              <div style={{ fontSize: '28px', marginBottom: '10px' }}>📁</div>
+              <Icon name="upload" size={24} strokeWidth={1.7} />
               <div style={s.uploadText}>Click to upload files</div>
               <div style={s.uploadSub}>PDF · DOCX · PNG · JPG · TXT — multiple files supported</div>
               <input ref={fileInputRef} type="file" accept="*/*" multiple style={{ display: 'none' }} onChange={handleFileUpload} />
@@ -653,7 +733,7 @@ function PMApp() {
             {processing && <div style={s.processing}>{processing}</div>}
 
             <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: s.text2, marginBottom: '8px' }}>Add Figma link</div>
+              <div style={{ fontSize: '12.5px', fontWeight: '700', color: s.text2, marginBottom: '8px' }}>Add Figma link</div>
               <div style={s.figmaRow}>
                 <input style={{ ...s.input, marginBottom: 0, flex: 1 }} placeholder="https://www.figma.com/file/..." value={figmaUrl} onChange={e => setFigmaUrl(e.target.value)} />
                 <button style={s.btnSm} onClick={extractFigma} disabled={!figmaUrl.trim()}>Extract screens</button>
@@ -661,7 +741,7 @@ function PMApp() {
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: s.text2, marginBottom: '8px' }}>Import from Confluence</div>
+              <div style={{ fontSize: '12.5px', fontWeight: '700', color: s.text2, marginBottom: '8px' }}>Import from Confluence</div>
               <div style={s.figmaRow}>
                 <input style={{ ...s.input, marginBottom: 0, flex: 1 }} placeholder="Paste Confluence page link" value={confluenceUrl} onChange={e => setConfluenceUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' && extractConfluence()} />
                 <button style={s.btnSm} onClick={extractConfluence} disabled={!confluenceUrl.trim()}>Import page</button>
@@ -669,7 +749,7 @@ function PMApp() {
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: s.text2, marginBottom: '8px' }}>Import from Jira</div>
+              <div style={{ fontSize: '12.5px', fontWeight: '700', color: s.text2, marginBottom: '8px' }}>Import from Jira</div>
               <div style={s.figmaRow}>
                 <input style={{ ...s.input, marginBottom: 0, flex: 1 }} placeholder="Jira ticket ID (e.g. WAY-123)" value={jiraKey} onChange={e => setJiraKey(e.target.value)} onKeyDown={e => e.key === 'Enter' && extractJira()} />
                 <button style={s.btnSm} onClick={extractJira} disabled={!jiraKey.trim()}>Import ticket</button>
@@ -685,7 +765,9 @@ function PMApp() {
 
         {tab === 'history' && (
           <div>
-            {chatHistory.length === 0 && <div style={{ ...s.card, ...s.emptyState }}><div style={s.emptyIcon}>💬</div>No questions asked yet.</div>}
+            {chatHistory.length === 0 && (
+              <div style={{ ...s.card, ...s.emptyState }}><Icon name="chat" size={26} strokeWidth={1.6} />No questions asked yet.</div>
+            )}
             {chatHistory.map((item, i) => <HistoryItem key={i} item={item} s={s} />)}
           </div>
         )}
@@ -693,7 +775,7 @@ function PMApp() {
         {tab === 'share' && (
           <div style={s.card}>
             <div style={s.cardTitle}>Share with your team</div>
-            <p style={{ fontSize: '14px', color: s.text2, marginBottom: '16px', lineHeight: '1.7' }}>
+            <p style={{ fontSize: '13.5px', color: s.text2, marginBottom: '16px', lineHeight: '1.7' }}>
               Share this link with designers, engineers, and QA. They'll get a clean chat interface for this project only.
             </p>
             <div style={s.linkBox}>
@@ -713,7 +795,7 @@ function PMApp() {
           </div>
         )}
 
-        <div style={s.footer}>Mind AI built by Mukesh for Way with ❤️</div>
+        <div style={s.footer}>Mind AI built by Mukesh for Way with ♥</div>
       </div>
       <Toast msg={toast} s={s} />
     </div>
@@ -903,8 +985,8 @@ function ChatApp() {
   if (notFound) return (
     <div style={{ ...s.page, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '32px', marginBottom: '12px' }}>🔍</div>
-        <div style={{ fontSize: '18px', fontWeight: '600', color: s.text1, marginBottom: '8px' }}>Project not found</div>
+        <div style={{ color: s.text3, marginBottom: '12px', display: 'flex', justifyContent: 'center' }}><Icon name="search" size={30} strokeWidth={1.6} /></div>
+        <div style={{ fontSize: '18px', fontWeight: '700', color: s.text1, marginBottom: '8px' }}>Project not found</div>
         <div style={{ fontSize: '14px', color: s.text2 }}>Ask your PM for the correct link.</div>
       </div>
     </div>
@@ -919,7 +1001,7 @@ function ChatApp() {
   // sidebar styling (responsive)
   const sidebarStyle = isNarrow
     ? { ...s.chatSidebar, position: 'fixed', top: 0, left: 0, height: '100vh', zIndex: 60, transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)', transition: 'transform 0.25s ease', boxShadow: sidebarOpen ? '0 0 40px rgba(0,0,0,0.45)' : 'none' }
-    : { ...s.chatSidebar, width: sidebarOpen ? '280px' : '0px', borderRight: sidebarOpen ? s.chatSidebar.borderRight : 'none', overflow: 'hidden', transition: 'width 0.2s ease' }
+    : { ...s.chatSidebar, width: sidebarOpen ? '272px' : '0px', borderRight: sidebarOpen ? s.chatSidebar.borderRight : 'none', overflow: 'hidden', transition: 'width 0.2s ease' }
 
   return (
     <div style={s.chatLayout}>
@@ -933,8 +1015,9 @@ function ChatApp() {
           {isNarrow && <button style={s.iconBtn} onClick={() => setSidebarOpen(false)}>×</button>}
         </div>
         <div style={{ padding: '12px' }}>
-          <button style={s.newChatBtn} onClick={newChat}>+ New chat</button>
+          <button style={s.newChatBtn} onClick={newChat}><Icon name="plus" size={14} strokeWidth={2.4} />New chat</button>
         </div>
+        <div style={s.histLabel}>Conversation history</div>
         <div style={s.chatList}>
           {sidebarChats.map(c => (
             <div
@@ -943,8 +1026,9 @@ function ChatApp() {
               style={c.id === activeChatId ? { ...s.chatListItem, ...s.chatListItemActive } : s.chatListItem}
               onClick={() => selectChat(c.id)}
             >
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                {c.isHistory ? '🕘 ' : ''}{c.title || 'New chat'}
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {c.isHistory && <Icon name="clock" size={12} />}
+                {c.title || 'New chat'}
               </span>
               {!c.isHistory && <button style={s.chatDelBtn} onClick={(e) => deleteChat(c.id, e)} title="Delete chat">×</button>}
             </div>
@@ -955,30 +1039,35 @@ function ChatApp() {
 
       <div style={s.chatMain}>
         <div style={s.chatMainHeader}>
-          <button style={s.iconBtn} onClick={() => setSidebarOpen(o => !o)} title="Toggle chats">☰</button>
+          <button style={s.iconBtn} onClick={() => setSidebarOpen(o => !o)} title="Toggle chats"><Icon name="menu" size={16} /></button>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <select style={s.headerSelect} value={projectId} onChange={e => navigate(`/chat/${e.target.value}`)} title="Switch project">
-              {(allProjects.length ? allProjects : [project]).map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
+            <div style={s.switcherWrap}>
+              <select style={s.headerSelect} value={projectId} onChange={e => navigate(`/chat/${e.target.value}`)} title="Switch project">
+                {(allProjects.length ? allProjects : [project]).map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              <span style={s.switcherChevron}><Icon name="chevronDown" size={14} strokeWidth={2.2} /></span>
+            </div>
             <div style={s.chatProjectSub}>Answers based on project documents only</div>
           </div>
-          <button style={s.themeBtn} onClick={toggle}>{dark ? '☀️' : '🌙'}</button>
+          <ThemeToggle dark={dark} toggle={toggle} s={s} />
         </div>
 
         <div style={s.teamBar}>
           <span style={s.teamLabel}>Team</span>
-          {TEAMS.map(t => (
-            <button key={t} style={t === team ? s.teamTabActive : s.teamTab} onClick={() => setTeam(t)}>{t}</button>
-          ))}
+          <div style={s.teamTabsGroup}>
+            {TEAMS.map(t => (
+              <button key={t} style={t === team ? s.teamTabActive : s.teamTab} onClick={() => setTeam(t)}>{t}</button>
+            ))}
+          </div>
         </div>
 
         <div style={s.chatScroll}>
           <div style={s.chatInner}>
             {messages.length === 0 && !loading && (
               <div style={s.emptyChat}>
-                <div style={s.emptyChatIcon}>🧠</div>
+                <div style={s.emptyChatIcon}><Icon name="mark" size={24} strokeWidth={1.7} /></div>
                 <div style={s.emptyChatTitle}>Ask anything about {project.name}</div>
                 <div style={s.emptyChatSub}>I'll answer strictly from the uploaded project documents. You can also attach a screenshot.</div>
               </div>
@@ -992,7 +1081,7 @@ function ChatApp() {
                     </div>
                   </div>
                 : <div key={i} style={s.aiMsgRow}>
-                    <div style={s.aiAvatar}>🧠</div>
+                    <div style={s.aiAvatar}><Icon name="mark" size={14} strokeWidth={1.9} /></div>
                     <div style={s.aiBubble}>
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
                     </div>
@@ -1000,7 +1089,7 @@ function ChatApp() {
             ))}
             {loading && (
               <div style={s.aiMsgRow}>
-                <div style={s.aiAvatar}>🧠</div>
+                <div style={s.aiAvatar}><Icon name="mark" size={14} strokeWidth={1.9} /></div>
                 <div style={{ ...s.aiBubble, color: s.text2 }}>Searching documents...</div>
               </div>
             )}
@@ -1024,11 +1113,11 @@ function ChatApp() {
                 onChange={e => setQuestion(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && askQuestion()}
               />
-              <button style={s.attachBtn} onClick={() => imageInputRef.current.click()} title="Attach screenshot">📎</button>
+              <button style={s.attachBtn} onClick={() => imageInputRef.current.click()} title="Attach screenshot"><Icon name="paperclip" size={17} /></button>
               <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleChatImage} />
-              <button style={s.sendBtn} onClick={askQuestion} disabled={loading}>{loading ? '...' : 'Ask →'}</button>
+              <button style={s.sendBtn} onClick={askQuestion} disabled={loading}>{loading ? '...' : <>Ask <Icon name="arrowRight" size={14} strokeWidth={2.4} /></>}</button>
             </div>
-            <div style={s.poweredBy}>Mind AI built by Mukesh for Way with ❤️</div>
+            <div style={s.poweredBy}>Mind AI built with ♥</div>
           </div>
         </div>
       </div>
