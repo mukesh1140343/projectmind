@@ -58,7 +58,6 @@ function makeStyles(dark) {
   const accent = dark ? '#8C7DF3' : '#6D5AE0'
   const accentHover = dark ? '#9D90F5' : '#5C49CB'
   const accentTint = dark ? '#332C56' : '#EEEAFB'
-  const accentContrast = '#FFFFFF'
   const inputBg = dark ? '#1A1922' : '#FFFFFF'
   const tabBg = dark ? '#1A1922' : '#EFEEEA'
   const tabActiveBg = dark ? '#2C2A36' : '#FFFFFF'
@@ -1117,7 +1116,7 @@ function ChatApp() {
               <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleChatImage} />
               <button style={s.sendBtn} onClick={askQuestion} disabled={loading}>{loading ? '...' : <>Ask <Icon name="arrowRight" size={14} strokeWidth={2.4} /></>}</button>
             </div>
-            <div style={s.poweredBy}>Mind AI built with ♥</div>
+            <div style={s.poweredBy}>Mind AI built by Mukesh for Way with ♥</div>
           </div>
         </div>
       </div>
