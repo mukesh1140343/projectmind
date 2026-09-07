@@ -81,7 +81,7 @@ function makeStyles(dark) {
     nav: { display: 'flex', gap: '3px', background: bg3, padding: '4px', borderRadius: '11px', border: `1px solid ${border}` },
     navItem: { padding: '7px 16px', borderRadius: '8px', border: 'none', background: 'none', fontSize: '13px', cursor: 'pointer', color: text2, fontWeight: '600' },
     navItemActive: { padding: '7px 16px', borderRadius: '8px', border: 'none', background: tabActiveBg, fontSize: '13px', cursor: 'pointer', color: text1, fontWeight: '700', boxShadow: dark ? 'none' : shadow },
-    container: { maxWidth: '960px', margin: '0 auto', padding: '36px 24px' },
+    container: { maxWidth: '1320px', width: '100%', margin: '0 auto', padding: '36px 48px', boxSizing: 'border-box' },
     card: { background: bg2, borderRadius: '16px', padding: '22px', marginBottom: '16px', border: `1px solid ${border}`, boxShadow: shadow },
     cardTitle: { fontSize: '14px', fontWeight: '700', color: text1, marginBottom: '16px' },
     input: { width: '100%', padding: '11px 14px', borderRadius: '10px', border: `1px solid ${border2}`, marginBottom: '10px', fontSize: '13.5px', boxSizing: 'border-box', outline: 'none', background: inputBg, color: text1, fontFamily: FONT },
